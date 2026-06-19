@@ -94,7 +94,7 @@ GitHub Actions: `.github/workflows/ci.yml` (CLI tests + konsol config_service te
 
 ### MCP setup
 
-Copy `mcp.example.json` into Cursor / Claude Desktop MCP config. Set `KONSOL_URL`, `KONSOL_SITE`, `KONSOL_API_KEY`, `KONSOL_API_SECRET`.
+Copy `mcp.example.json` into Cursor / Claude Desktop MCP config. Use `${KONSOL_API_KEY}` env placeholders — credentials in `~/.config/konsol/secrets.toml` (chmod 600), never in git or HANDOFF.
 
 Grok: `grok mcp doctor konsol` — see `.grok/config.toml` in this repo.
 

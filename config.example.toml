@@ -1,11 +1,11 @@
-# Copy to ~/.config/konsol/config.toml
+# Copy to ~/.config/konsol/config.toml (non-secret settings only).
+# Credentials: copy secrets.example.toml → ~/.config/konsol/secrets.toml (chmod 600)
+#   OR set KONSOL_API_KEY / KONSOL_API_SECRET in your environment.
 
 [default]
 backend = "api"
 url = "https://epm.example.com"
 site = "konsolidat.local"
-api_key = "your-api-key"
-api_secret = "your-api-secret"
 
 # For local Docker via bench instead:
 # backend = "bench"

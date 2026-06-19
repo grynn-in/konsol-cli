@@ -23,6 +23,20 @@ def _load_config_file() -> dict:
     return {}
 
 
+def _secrets_path() -> Path:
+    if os.environ.get("KONSOL_SECRETS"):
+        return Path(os.environ["KONSOL_SECRETS"])
+    return Path.home() / ".config" / "konsol" / "secrets.toml"
+
+
+def _load_secrets_file() -> dict:
+    path = _secrets_path()
+    if not path.is_file():
+        return {}
+    with path.open("rb") as handle:
+        return tomllib.load(handle).get("default", {})
+
+
 @dataclass(frozen=True)
 class Settings:
     backend: str
@@ -46,6 +60,7 @@ class Settings:
         api_secret: str | None = None,
     ) -> Settings:
         file_cfg = _load_config_file().get("default", {})
+        secrets_cfg = _load_secrets_file()
         return cls(
             backend=backend
             or os.environ.get("KONSOL_BACKEND")
@@ -60,10 +75,12 @@ class Settings:
             or os.environ.get("KONSOL_COMPOSE_SERVICE")
             or file_cfg.get("compose_service", "frappe_backend"),
             url=url or os.environ.get("KONSOL_URL") or file_cfg.get("url"),
-            api_key=api_key or os.environ.get("KONSOL_API_KEY") or file_cfg.get("api_key"),
+            api_key=api_key
+            or os.environ.get("KONSOL_API_KEY")
+            or secrets_cfg.get("api_key"),
             api_secret=api_secret
             or os.environ.get("KONSOL_API_SECRET")
-            or file_cfg.get("api_secret"),
+            or secrets_cfg.get("api_secret"),
         )
 
     def merge(self, **overrides: str | None) -> Settings:

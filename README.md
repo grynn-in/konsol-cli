@@ -52,9 +52,16 @@ konsol --backend api \
 
 When connecting to `localhost:8069`, keep `--site` set — the CLI sends it as the `Host` header so Frappe routes to the right site.
 
-**Optional config file** — copy `config.example.toml` to `~/.config/konsol/config.toml` so you don't pass flags every time. When `--backend` is omitted, the CLI reads defaults from that file.
+**Optional config file** — copy `config.example.toml` to `~/.config/konsol/config.toml` (connection settings only). Copy `secrets.example.toml` to `~/.config/konsol/secrets.toml` and `chmod 600` — **never commit credentials**. Env vars `KONSOL_API_KEY` / `KONSOL_API_SECRET` override secrets.toml.
 
-**Grok MCP** — from this repo directory, `grok mcp doctor konsol` should report healthy after `pip install -e ".[mcp]"` and API keys are set. See `.grok/config.toml` for project-scoped config.
+**Grok MCP** — configs use `${KONSOL_API_KEY}` placeholders. Before starting Grok:
+
+```bash
+source scripts/load-konsol-secrets.sh   # exports vars, does not print them
+grok mcp doctor konsol
+```
+
+See `.grok/config.toml` (project-scoped, safe to commit) — not plaintext secrets.
 
 ## Commands
 

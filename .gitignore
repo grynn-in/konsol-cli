@@ -4,3 +4,7 @@ __pycache__/
 .pytest_cache/
 dist/
 build/
+secrets.toml
+config.local.toml
+.env
+.env.local
