@@ -25,7 +25,7 @@ konsol-cli / konsol-mcp
 
 | What | Where |
 |------|--------|
-| CLI tool (git repo) | `/Users/deepakpai/Documents/grynn/konsolidat/konsol_cli/` |
+| CLI tool (git repo) | https://github.com/grynn-in/konsol-cli (`/Users/deepakpai/Documents/grynn/konsolidat/konsol_cli/`) |
 | konsol app (local staging copy) | `/Users/deepakpai/Documents/grynn/konsolidat/repo/docker/frappe/konsol/` |
 | konsol on GitHub | https://github.com/grynn-in/konsol |
 | konsolidat stack | `/Users/deepakpai/Documents/grynn/konsolidat/repo/` (`docker-compose.yml`) |
@@ -34,7 +34,7 @@ konsol-cli / konsol-mcp
 
 ## What was built (konsol app)
 
-Pushed to `grynn-in/konsol` **main** (commit `753d70e` + v0.7.0 additions pending push):
+Pushed to `grynn-in/konsol` **main** (commit `d618392`):
 
 | Layer | Functions |
 |-------|-----------|
@@ -102,8 +102,8 @@ Debug: `npx @modelcontextprotocol/inspector konsol-mcp`
 
 | # | Task | Status |
 |---|------|--------|
-| 1 | Push konsol to `grynn-in/konsol` main | Done (`753d70e`); v0.7.0 konsol commit pending push |
-| 2 | Init git for `konsol_cli/`, commit v0.7.0 | Done (local repo) |
+| 1 | Push konsol to `grynn-in/konsol` main | Done (`d618392`) |
+| 2 | Init git for `konsol_cli/`, commit v0.7.0 | Done — https://github.com/grynn-in/konsol-cli (`8e2e9cc`) |
 | 3 | Update README + HANDOFF | Done |
 | 4 | CI smoke test in GitHub Actions | Done (`.github/workflows/ci.yml`) |
 | 5 | MCP config snippet + Inspector | Done (`mcp.example.json`, README) |
@@ -116,8 +116,8 @@ Debug: `npx @modelcontextprotocol/inspector konsol-mcp`
 
 | Priority | Task | Why |
 |----------|------|-----|
-| A | Push konsol v0.7.0 + create `grynn-in/konsol-cli` remote | Publish both repos |
-| B | Rebuild Docker image after konsol push | Bake v0.7.0 into stack |
+| A | Push konsol v0.7.0 + publish `grynn-in/konsol-cli` | Done |
+| B | Rebuild Docker image after konsol push | Done — image `0027bfdf66ca` |
 | C | Smoke-test `fact unpublish`, `connector list`, `source list` on live Docker | End-to-end validation |
 | D | Add connectors to YAML export/apply bundle | GitOps completeness |
 | E | `dimension/measure unpublish` CLI commands | Symmetry with fact |
