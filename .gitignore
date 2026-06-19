@@ -5,6 +5,7 @@ __pycache__/
 dist/
 build/
 secrets.toml
+secrets.env
 config.local.toml
 .env
 .env.local

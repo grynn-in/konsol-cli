@@ -1,6 +1,6 @@
 # Copy to ~/.config/konsol/config.toml (non-secret settings only).
-# Credentials: copy secrets.example.toml → ~/.config/konsol/secrets.toml (chmod 600)
-#   OR set KONSOL_API_KEY / KONSOL_API_SECRET in your environment.
+# Credentials: copy secrets.example.env → ~/.config/konsol/secrets.env (chmod 600)
+#   or secrets.example.toml → secrets.toml — never commit either file.
 
 [default]
 backend = "api"

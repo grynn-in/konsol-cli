@@ -52,7 +52,16 @@ konsol --backend api \
 
 When connecting to `localhost:8069`, keep `--site` set — the CLI sends it as the `Host` header so Frappe routes to the right site.
 
-**Optional config file** — copy `config.example.toml` to `~/.config/konsol/config.toml` (connection settings only). Copy `secrets.example.toml` to `~/.config/konsol/secrets.toml` and `chmod 600` — **never commit credentials**. Env vars `KONSOL_API_KEY` / `KONSOL_API_SECRET` override secrets.toml.
+**Optional config file** — copy `config.example.toml` to `~/.config/konsol/config.toml` (connection settings only).
+
+**Credentials (pick one, never commit):**
+
+```bash
+cp secrets.example.env ~/.config/konsol/secrets.env && chmod 600 ~/.config/konsol/secrets.env
+# or: secrets.example.toml → ~/.config/konsol/secrets.toml
+```
+
+The CLI loads `secrets.env` first, then `secrets.toml`. Shell env vars take precedence.
 
 **Grok MCP** — configs use `${KONSOL_API_KEY}` placeholders. Before starting Grok:
 

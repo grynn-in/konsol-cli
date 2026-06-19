@@ -23,18 +23,51 @@ def _load_config_file() -> dict:
     return {}
 
 
-def _secrets_path() -> Path:
+def _secrets_dir() -> Path:
+    return Path.home() / ".config" / "konsol"
+
+
+def _parse_dotenv(text: str) -> dict[str, str]:
+    values: dict[str, str] = {}
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        key, sep, value = line.partition("=")
+        if not sep:
+            continue
+        key = key.strip()
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+            value = value[1:-1]
+        values[key] = value
+    return values
+
+
+def _load_dotenv_file(path: Path) -> dict[str, str]:
+    return _parse_dotenv(path.read_text(encoding="utf-8"))
+
+
+def _secrets_paths() -> list[Path]:
     if os.environ.get("KONSOL_SECRETS"):
-        return Path(os.environ["KONSOL_SECRETS"])
-    return Path.home() / ".config" / "konsol" / "secrets.toml"
+        return [Path(os.environ["KONSOL_SECRETS"])]
+    base = _secrets_dir()
+    return [base / "secrets.env", base / "secrets.toml"]
 
 
 def _load_secrets_file() -> dict:
-    path = _secrets_path()
-    if not path.is_file():
-        return {}
-    with path.open("rb") as handle:
-        return tomllib.load(handle).get("default", {})
+    for path in _secrets_paths():
+        if not path.is_file():
+            continue
+        if path.suffix == ".env" or path.name.endswith(".env"):
+            dotenv = _load_dotenv_file(path)
+            return {
+                "api_key": dotenv.get("KONSOL_API_KEY"),
+                "api_secret": dotenv.get("KONSOL_API_SECRET"),
+            }
+        with path.open("rb") as handle:
+            return tomllib.load(handle).get("default", {})
+    return {}
 
 
 @dataclass(frozen=True)
