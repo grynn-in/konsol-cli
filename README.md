@@ -122,6 +122,8 @@ pip install -e ".[mcp]"
 
 Set `KONSOL_URL`, `KONSOL_SITE`, `KONSOL_API_KEY`, and `KONSOL_API_SECRET` in the server env block, then run `konsol-mcp` (stdio transport).
 
+Connector Airbyte tools (v0.10.0+): `test_connector_writeback`, `provision_connector_airbyte` — require the matching konsol app endpoints on your site.
+
 Debug with the MCP Inspector:
 
 ```bash

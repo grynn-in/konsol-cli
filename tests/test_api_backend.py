@@ -141,6 +141,58 @@ def test_list_fact_tables_uses_frappe_api():
     assert captured["params"] == {"status": "Published"}
 
 
+def test_test_connector_writeback_uses_frappe_api():
+    backend = ApiBackend(_settings())
+    response = MagicMock()
+    response.status_code = 200
+    response.json.return_value = {
+        "message": {"ok": True, "message": "D365 extract credentials validated."},
+    }
+
+    captured: dict = {}
+
+    def fake_get(url, params=None, timeout=None):
+        captured["url"] = url
+        captured["params"] = params
+        return response
+
+    backend._session.get = fake_get
+
+    result = backend.test_connector_writeback("CONN-00001")
+
+    assert result["ok"] is True
+    assert captured["url"].endswith("konsol.cli_api.test_connector_writeback_api")
+    assert captured["params"] == {"name": "CONN-00001"}
+
+
+def test_provision_connector_airbyte_posts_json():
+    backend = ApiBackend(_settings())
+    response = MagicMock()
+    response.status_code = 200
+    response.json.return_value = {
+        "message": {
+            "ok": True,
+            "airbyte_connection_id": "conn-uuid",
+            "airbyte_source_id": "src-uuid",
+        },
+    }
+
+    captured: dict = {}
+
+    def fake_post(url, json=None, timeout=None):
+        captured["url"] = url
+        captured["json"] = json
+        return response
+
+    backend._session.post = fake_post
+
+    result = backend.provision_connector_airbyte("CONN-00001")
+
+    assert result["airbyte_connection_id"] == "conn-uuid"
+    assert captured["url"].endswith("konsol.cli_api.provision_connector_airbyte_api")
+    assert captured["json"] == {"name": "CONN-00001"}
+
+
 def test_apply_config_posts_json():
     backend = ApiBackend(_settings())
     response = MagicMock()

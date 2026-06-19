@@ -150,6 +150,18 @@ def delete_connector(name: str) -> str:
 
 
 @mcp.tool()
+def test_connector_writeback(name: str) -> str:
+    """Validate a Connector's write-back credentials against the live ERP."""
+    return _json(_backend().test_connector_writeback(name))
+
+
+@mcp.tool()
+def provision_connector_airbyte(name: str) -> str:
+    """Test extract creds and provision Airbyte source + connection for a Connector."""
+    return _json(_backend().provision_connector_airbyte(name))
+
+
+@mcp.tool()
 def list_erp_sources() -> str:
     """Return enabled ERP source keys (dbt vars.erp_sources)."""
     return _json(_backend().list_erp_sources())

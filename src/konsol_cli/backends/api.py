@@ -152,6 +152,16 @@ class ApiBackend:
     def delete_connector(self, name: str) -> dict[str, Any]:
         return self._call("konsol.cli_api.delete_connector_api", name=name)
 
+    def test_connector_writeback(self, name: str) -> dict[str, Any]:
+        return self._call("konsol.cli_api.test_connector_writeback_api", name=name)
+
+    def provision_connector_airbyte(self, name: str) -> dict[str, Any]:
+        return self._call(
+            "konsol.cli_api.provision_connector_airbyte_api",
+            use_post=True,
+            name=name,
+        )
+
     def list_erp_sources(self) -> dict[str, Any]:
         return self._call("konsol.cli_api.list_erp_sources_api")
 
