@@ -144,6 +144,12 @@ def upsert_connector(spec: dict[str, Any]) -> str:
 
 
 @mcp.tool()
+def delete_connector(name: str) -> str:
+    """Delete a Connector doc by ID (CONN-...) or connector_name."""
+    return _json(_backend().delete_connector(name))
+
+
+@mcp.tool()
 def list_erp_sources() -> str:
     """Return enabled ERP source keys (dbt vars.erp_sources)."""
     return _json(_backend().list_erp_sources())
@@ -168,9 +174,9 @@ def export_config(status: str | None = None) -> str:
 
 
 @mcp.tool()
-def apply_config(spec: dict[str, Any], publish: bool = False) -> str:
+def apply_config(spec: dict[str, Any], publish: bool = False, prune: bool = False) -> str:
     """Apply a config bundle (dimensions, measures, fact tables, connectors)."""
-    return _json(_backend().apply_config(spec, publish=publish))
+    return _json(_backend().apply_config(spec, publish=publish, prune=prune))
 
 
 @mcp.tool()

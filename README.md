@@ -83,12 +83,13 @@ konsol fact unpublish my_fact
 konsol connector list
 konsol connector show CONN-00001
 konsol connector create --name "ERPNext Demo" --erp-type erpnext --entity-id ENT01
+konsol connector delete CONN-00001
 konsol source list
 
 # Config (GitOps YAML)
 konsol config export -o model.yaml
 konsol config diff model.yaml
-konsol config apply model.yaml [--publish] [--dry-run]
+konsol config apply model.yaml [--publish] [--prune] [--dry-run]
 
 # Schema
 konsol schema apply

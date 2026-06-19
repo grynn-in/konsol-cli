@@ -81,3 +81,18 @@ def create_connector(
         f"[green]{action.title()}[/green] connector [bold]{connector['name']}[/bold] "
         f"({connector['connector_name']}, enabled={connector['enabled']})"
     )
+
+
+@app.command("delete")
+def delete_connector(
+    ctx: typer.Context,
+    name: str = typer.Argument(
+        help="Connector ID (CONN-00001) or connector_name to delete.",
+    ),
+) -> None:
+    """Delete a connector from the registry."""
+    result = get_backend(ctx).delete_connector(name)
+    console.print(
+        f"[green]Deleted[/green] connector [bold]{result['name']}[/bold] "
+        f"({result['connector_name']})"
+    )

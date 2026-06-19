@@ -92,12 +92,13 @@ class BenchBackend:
         return self._call("konsol.cli_api.export_config_api", status=status)
 
     def apply_config(
-        self, spec: dict[str, Any], publish: bool = False
+        self, spec: dict[str, Any], publish: bool = False, prune: bool = False
     ) -> dict[str, Any]:
         return self._call(
             "konsol.cli_api.apply_config_api",
             spec=spec,
             publish=publish,
+            prune=prune,
         )
 
     def diff_config(
@@ -120,6 +121,9 @@ class BenchBackend:
 
     def upsert_connector(self, spec: dict[str, Any]) -> dict[str, Any]:
         return self._call("konsol.cli_api.upsert_connector_api", spec=spec)
+
+    def delete_connector(self, name: str) -> dict[str, Any]:
+        return self._call("konsol.cli_api.delete_connector_api", name=name)
 
     def list_erp_sources(self) -> dict[str, Any]:
         return self._call("konsol.cli_api.list_erp_sources_api")

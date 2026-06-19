@@ -1,0 +1,10 @@
+api_version: konsol/v1
+connectors:
+  - connector_name: ERPNext Production
+    erp_type: erpnext
+    enabled: true
+    airbyte_connection_id: null  # set after Airbyte connection is created
+    sync_frequency_minutes: 1440
+    legal_entities:
+      - entity_id: YOUR-COMPANY
+        entity_name: Your Company Ltd

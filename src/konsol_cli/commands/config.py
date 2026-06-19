@@ -99,6 +99,11 @@ def apply_config(
         "--dry-run",
         help="Show diff only; do not write to the site.",
     ),
+    prune: bool = typer.Option(
+        False,
+        "--prune",
+        help="Remove entities on the site that are not in the bundle.",
+    ),
 ) -> None:
     """Apply a config bundle to the konsol site."""
     bundle = _load_bundle(path)
@@ -113,7 +118,7 @@ def apply_config(
         _print_diff_section("Connectors", diff["connectors"])
         raise typer.Exit()
 
-    summary = backend.apply_config(bundle, publish=publish)
+    summary = backend.apply_config(bundle, publish=publish, prune=prune)
     console.print(
         f"[green]Applied[/green] "
         f"{len(summary.get('dimensions', []))} dimensions, "
@@ -121,6 +126,15 @@ def apply_config(
         f"{len(summary.get('fact_tables', []))} fact tables, "
         f"{len(summary.get('connectors', []))} connectors"
     )
+    if prune:
+        pruned = summary.get("pruned") or {}
+        console.print(
+            "[yellow]Pruned[/yellow] "
+            f"{len(pruned.get('dimensions', []))} dimensions, "
+            f"{len(pruned.get('measures', []))} measures, "
+            f"{len(pruned.get('fact_tables', []))} fact tables, "
+            f"{len(pruned.get('connectors', []))} connectors"
+        )
     if publish:
         console.print("[yellow]Published entities — schema apply + build requests triggered.[/yellow]")
 
