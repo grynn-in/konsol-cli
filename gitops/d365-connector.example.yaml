@@ -1,0 +1,12 @@
+api_version: konsol/v1
+connectors:
+  - connector_name: D365 F&O Production
+    erp_type: d365_fo
+    enabled: true
+    airbyte_connection_id: null  # set after Airbyte connection is created
+    sync_frequency_minutes: 1440
+    legal_entities:
+      - entity_id: USMF
+        entity_name: US Manufacturing
+      - entity_id: DEMF
+        entity_name: DE Manufacturing

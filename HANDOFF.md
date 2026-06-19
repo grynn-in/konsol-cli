@@ -100,14 +100,23 @@ Grok: `grok mcp doctor konsol` — see `.grok/config.toml` in this repo.
 
 Debug: `npx @modelcontextprotocol/inspector konsol-mcp`
 
-### ERPNext wiring
+### ERP wiring scripts
 
 ```bash
 # After Airbyte is installed (scripts/setup-airbyte.sh):
-export ERPNEXT_HOST_URL=... ERPNEXT_API_KEY=... ERPNEXT_API_SECRET=...
+
+# D365 F&O
+export D365_TENANT_ID=... D365_CLIENT_ID=... D365_CLIENT_SECRET=...
+export D365_ENVIRONMENT_URL=https://mycompany.operations.dynamics.com
 export AIRBYTE_CONNECTION_ID=<uuid>   # optional on first run
+bash repo/scripts/wire-d365-connector.sh
+
+# ERPNext
+export ERPNEXT_HOST_URL=... ERPNEXT_API_KEY=... ERPNEXT_API_SECRET=...
 bash repo/scripts/wire-erpnext-connector.sh
 ```
+
+Local demo stack seeds D365-shaped data in ClickHouse without a Connector — see `generate_demo_data.py`.
 
 ---
 
