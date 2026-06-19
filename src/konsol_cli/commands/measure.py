@@ -88,3 +88,17 @@ def publish_measure(
         f"(status={result['measure']['status']})"
     )
     console.print("[yellow]Schema apply + build request triggered.[/yellow]")
+
+
+@app.command("unpublish")
+def unpublish_measure(
+    ctx: typer.Context,
+    name: str = typer.Argument(help="Measure name to unpublish."),
+) -> None:
+    """Unpublish a measure (Inactive) and trigger schema apply + rebuild."""
+    result = get_backend(ctx).unpublish_measure(name)
+    console.print(
+        f"[green]Unpublished[/green] measure [bold]{name}[/bold] "
+        f"(status={result['measure']['status']})"
+    )
+    console.print("[yellow]Schema apply + build request triggered.[/yellow]")

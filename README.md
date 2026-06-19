@@ -62,10 +62,12 @@ konsol dimension list
 konsol dimension show dim_cost_center
 konsol dimension create dim_project --source-column Project --label "Project"
 konsol dimension publish dim_project
+konsol dimension unpublish dim_project
 
 # Measures
 konsol measure list
 konsol measure create period_headcount --expression "sum(headcount)" --label "Headcount"
+konsol measure unpublish period_headcount
 
 # Fact tables
 konsol fact list

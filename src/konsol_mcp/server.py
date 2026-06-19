@@ -60,6 +60,12 @@ def publish_dimension(name: str) -> str:
 
 
 @mcp.tool()
+def unpublish_dimension(name: str) -> str:
+    """Unpublish a Dimension doc and request a governed rebuild."""
+    return _json(_backend().unpublish_dimension(name))
+
+
+@mcp.tool()
 def list_measures(status: str | None = None) -> str:
     """List Measure docs. Optional status: Draft, Published, or Inactive."""
     return _json(_backend().list_measures(status=status))
@@ -81,6 +87,12 @@ def upsert_measure(spec: dict[str, Any], publish: bool = False) -> str:
 def publish_measure(name: str) -> str:
     """Publish a Measure doc and request a governed rebuild."""
     return _json(_backend().publish_measure(name))
+
+
+@mcp.tool()
+def unpublish_measure(name: str) -> str:
+    """Unpublish a Measure doc and request a governed rebuild."""
+    return _json(_backend().unpublish_measure(name))
 
 
 @mcp.tool()
@@ -151,13 +163,13 @@ def get_schema_status() -> str:
 
 @mcp.tool()
 def export_config(status: str | None = None) -> str:
-    """Export dimensions, measures, and fact tables as a portable bundle."""
+    """Export dimensions, measures, fact tables, and connectors as a portable bundle."""
     return _json(_backend().export_config(status=status))
 
 
 @mcp.tool()
 def apply_config(spec: dict[str, Any], publish: bool = False) -> str:
-    """Apply a config bundle (dimensions, measures, fact tables)."""
+    """Apply a config bundle (dimensions, measures, fact tables, connectors)."""
     return _json(_backend().apply_config(spec, publish=publish))
 
 

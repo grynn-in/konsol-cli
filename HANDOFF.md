@@ -1,6 +1,6 @@
 # konsol-cli — session handoff
 
-Last updated: 2026-06-19 (v0.7.0)
+Last updated: 2026-06-19 (v0.8.0)
 
 Use this file to resume work after clearing chat context. Point the agent at this file and `konsol_cli/` first.
 
@@ -34,19 +34,19 @@ konsol-cli / konsol-mcp
 
 ## What was built (konsol app)
 
-Pushed to `grynn-in/konsol` **main** (commit `d618392`):
+Pushed to `grynn-in/konsol` **main** (commit `d618392`); local changes pending push for v0.8.0:
 
 | Layer | Functions |
 |-------|-----------|
-| `config_service.py` | dimensions, measures, fact tables (incl. unpublish), connectors, erp_sources, YAML export/apply/diff, schema |
+| `config_service.py` | dimensions, measures, fact tables (incl. unpublish), connectors, erp_sources, YAML export/apply/diff (incl. connectors), schema |
 | `cli_api.py` | Whitelisted `*_api` wrappers for every `config_service` entrypoint |
-| `tests/test_config_service.py` | Structural + mocked tests (26+) |
+| `tests/test_config_service.py` | Structural + mocked tests (28+) |
 
 **Docker deploy rule:** `bench get-app` installs from **git HEAD**. Commit konsol before `docker compose build frappe_backend`.
 
 ---
 
-## What was built (konsol-cli v0.7.0)
+## What was built (konsol-cli v0.8.0)
 
 Install:
 
@@ -60,8 +60,8 @@ pip install -e ".[mcp]"   # optional MCP server
 ### Commands
 
 ```bash
-konsol dimension list|show|create|publish
-konsol measure list|show|create|publish
+konsol dimension list|show|create|publish|unpublish
+konsol measure list|show|create|publish|unpublish
 konsol fact list|show|create|publish|unpublish
 konsol connector list|show|create
 konsol source list
@@ -78,7 +78,7 @@ src/konsol_cli/
   backends/   bench.py, api.py
   commands/   dimension, measure, fact, connector, source, config, schema
 src/konsol_mcp/
-  server.py   # 21 tools, 1:1 with cli_api
+  server.py   # 23 tools, 1:1 with cli_api
 ```
 
 ### Tests & CI
@@ -118,9 +118,10 @@ Debug: `npx @modelcontextprotocol/inspector konsol-mcp`
 |----------|------|-----|
 | A | Push konsol v0.7.0 + publish `grynn-in/konsol-cli` | Done |
 | B | Rebuild Docker image after konsol push | Done — image `0027bfdf66ca` |
-| C | Smoke-test `fact unpublish`, `connector list`, `source list` on live Docker | End-to-end validation |
-| D | Add connectors to YAML export/apply bundle | GitOps completeness |
-| E | `dimension/measure unpublish` CLI commands | Symmetry with fact |
+| C | Smoke-test `fact unpublish`, `connector list/create`, `source list` on live Docker | Done (2026-06-19) |
+| D | Add connectors to YAML export/apply bundle | Done (v0.8.0) |
+| E | `dimension/measure unpublish` CLI commands | Done (v0.8.0) |
+| F | Push konsol v0.8.0 + rebuild Docker + publish `konsol-cli` v0.8.0 | Deploy local changes |
 
 ---
 
@@ -128,7 +129,7 @@ Debug: `npx @modelcontextprotocol/inspector konsol-mcp`
 
 ```
 Read konsol_cli/HANDOFF.md and continue the konsol-cli project.
-Next task: [A/B/C/D/E from above].
+Next task: [F or new item from above].
 ```
 
 Read first:
@@ -145,5 +146,6 @@ Read first:
 2. Not a bench site-management wrapper
 3. Publish/unpublish delegate to DocType controllers
 4. Connectors regenerate `erp_sources` on save (no separate publish)
+5. YAML bundle keys: `dimensions`, `measures`, `fact_tables`, `connectors` (matched by `connector_name`)
 
-Slices completed: list → create/publish → measures → schema → ApiBackend → facts → YAML → MCP → unpublish → connectors/sources → CI/docs/git.
+Slices completed: list → create/publish → measures → schema → ApiBackend → facts → YAML → MCP → unpublish → connectors/sources → CI/docs/git → YAML connectors → dimension/measure unpublish.

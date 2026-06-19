@@ -52,6 +52,9 @@ class ApiBackend:
     def publish_dimension(self, name: str) -> dict[str, Any]:
         return self._call("konsol.cli_api.publish_dimension_api", name=name)
 
+    def unpublish_dimension(self, name: str) -> dict[str, Any]:
+        return self._call("konsol.cli_api.unpublish_dimension_api", name=name)
+
     def get_measure(self, name: str) -> dict[str, Any]:
         return self._call("konsol.cli_api.get_measure_api", name=name)
 
@@ -67,6 +70,9 @@ class ApiBackend:
 
     def publish_measure(self, name: str) -> dict[str, Any]:
         return self._call("konsol.cli_api.publish_measure_api", name=name)
+
+    def unpublish_measure(self, name: str) -> dict[str, Any]:
+        return self._call("konsol.cli_api.unpublish_measure_api", name=name)
 
     def apply_schema(self, run_dbt: bool = False) -> dict[str, Any]:
         return self._call(

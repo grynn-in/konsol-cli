@@ -96,3 +96,17 @@ def publish_dimension(
         f"(status={result['dimension']['status']})"
     )
     console.print("[yellow]Schema apply + build request triggered.[/yellow]")
+
+
+@app.command("unpublish")
+def unpublish_dimension(
+    ctx: typer.Context,
+    name: str = typer.Argument(help="Dimension name to unpublish."),
+) -> None:
+    """Unpublish a dimension (Inactive) and trigger schema apply + rebuild."""
+    result = get_backend(ctx).unpublish_dimension(name)
+    console.print(
+        f"[green]Unpublished[/green] dimension [bold]{name}[/bold] "
+        f"(status={result['dimension']['status']})"
+    )
+    console.print("[yellow]Schema apply + build request triggered.[/yellow]")
