@@ -34,7 +34,7 @@ konsol-cli / konsol-mcp
 
 ## What was built (konsol app)
 
-Pushed to `grynn-in/konsol` **main** (commit `d618392`); local changes pending push for v0.8.0:
+Pushed to `grynn-in/konsol` **main** (commit `bfd1c41`):
 
 | Layer | Functions |
 |-------|-----------|
@@ -117,11 +117,11 @@ Debug: `npx @modelcontextprotocol/inspector konsol-mcp`
 | Priority | Task | Why |
 |----------|------|-----|
 | A | Push konsol v0.7.0 + publish `grynn-in/konsol-cli` | Done |
-| B | Rebuild Docker image after konsol push | Done — image `0027bfdf66ca` |
+| B | Rebuild Docker image after konsol push | Done — image `685b1e04e3be` (v0.8.0) |
 | C | Smoke-test `fact unpublish`, `connector list/create`, `source list` on live Docker | Done (2026-06-19) |
 | D | Add connectors to YAML export/apply bundle | Done (v0.8.0) |
 | E | `dimension/measure unpublish` CLI commands | Done (v0.8.0) |
-| F | Push konsol v0.8.0 + rebuild Docker + publish `konsol-cli` v0.8.0 | Deploy local changes |
+| F | Push konsol v0.8.0 + rebuild Docker + publish `konsol-cli` v0.8.0 | Done — image `685b1e04e3be`, API smoke passed |
 
 ---
 
@@ -129,7 +129,7 @@ Debug: `npx @modelcontextprotocol/inspector konsol-mcp`
 
 ```
 Read konsol_cli/HANDOFF.md and continue the konsol-cli project.
-Next task: [F or new item from above].
+Next task: [Git tag v0.8.0, GitOps round-trip, or MCP setup].
 ```
 
 Read first:
