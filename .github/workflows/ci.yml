@@ -1,0 +1,43 @@
+name: konsol-cli CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test-cli:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install konsol-cli
+        run: pip install -e ".[dev]"
+
+      - name: Run CLI unit tests
+        run: python -m pytest tests/ -q
+
+  test-konsol-config-service:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
+        with:
+          repository: grynn-in/konsol
+          path: konsol-app
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run config_service tests
+        working-directory: konsol-app
+        run: |
+          pip install pytest
+          PYTHONPATH=konsol python -m pytest konsol/tests/test_config_service.py -q

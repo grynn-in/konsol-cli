@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "konsol": {
+      "command": "konsol-mcp",
+      "args": [],
+      "env": {
+        "KONSOL_URL": "http://localhost:8069",
+        "KONSOL_SITE": "konsolidat.local",
+        "KONSOL_API_KEY": "your-api-key",
+        "KONSOL_API_SECRET": "your-api-secret"
+      }
+    }
+  }
+}

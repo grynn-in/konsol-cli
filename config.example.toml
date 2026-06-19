@@ -1,0 +1,13 @@
+# Copy to ~/.config/konsol/config.toml
+
+[default]
+backend = "api"
+url = "https://epm.example.com"
+site = "konsolidat.local"
+api_key = "your-api-key"
+api_secret = "your-api-secret"
+
+# For local Docker via bench instead:
+# backend = "bench"
+# compose_file = "/path/to/konsolidat/repo/docker-compose.yml"
+# site = "konsolidat.local"
