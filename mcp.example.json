@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "konsol": {
-      "command": "konsol-mcp",
+      "command": "/path/to/konsol_cli/.venv/bin/konsol-mcp",
       "args": [],
       "env": {
         "KONSOL_URL": "http://localhost:8069",

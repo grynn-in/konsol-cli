@@ -52,7 +52,9 @@ konsol --backend api \
 
 When connecting to `localhost:8069`, keep `--site` set — the CLI sends it as the `Host` header so Frappe routes to the right site.
 
-**Optional config file** — copy `config.example.toml` to `~/.config/konsol/config.toml` so you don't pass flags every time.
+**Optional config file** — copy `config.example.toml` to `~/.config/konsol/config.toml` so you don't pass flags every time. When `--backend` is omitted, the CLI reads defaults from that file.
+
+**Grok MCP** — from this repo directory, `grok mcp doctor konsol` should report healthy after `pip install -e ".[mcp]"` and API keys are set. See `.grok/config.toml` for project-scoped config.
 
 ## Commands
 

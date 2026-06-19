@@ -1,0 +1,7 @@
+# Project-scoped MCP for konsol-cli development.
+# Secrets: set KONSOL_API_KEY and KONSOL_API_SECRET in your shell or user config.
+
+[mcp_servers.konsol]
+command = "/Users/deepakpai/Documents/grynn/konsolidat/konsol_cli/.venv/bin/konsol-mcp"
+env = { KONSOL_URL = "http://localhost:8069", KONSOL_SITE = "konsolidat.local", KONSOL_API_KEY = "${KONSOL_API_KEY}", KONSOL_API_SECRET = "${KONSOL_API_SECRET}" }
+enabled = true

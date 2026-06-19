@@ -78,7 +78,7 @@ src/konsol_cli/
   backends/   bench.py, api.py
   commands/   dimension, measure, fact, connector, source, config, schema
 src/konsol_mcp/
-  server.py   # 23 tools, 1:1 with cli_api
+  server.py   # 24 tools, 1:1 with cli_api
 ```
 
 ### Tests & CI
@@ -122,6 +122,9 @@ Debug: `npx @modelcontextprotocol/inspector konsol-mcp`
 | D | Add connectors to YAML export/apply bundle | Done (v0.8.0) |
 | E | `dimension/measure unpublish` CLI commands | Done (v0.8.0) |
 | F | Push konsol v0.8.0 + rebuild Docker + publish `konsol-cli` v0.8.0 | Done — image `685b1e04e3be`, API smoke passed |
+| G | Git tag + release v0.8.0 | Done — tag `v0.8.0` on GitHub |
+| H | GitOps round-trip (connector in YAML) | Done — enable + legal entity via apply |
+| I | MCP wired in Grok | Done — `grok mcp doctor konsol` healthy, 24 tools |
 
 ---
 
@@ -129,7 +132,7 @@ Debug: `npx @modelcontextprotocol/inspector konsol-mcp`
 
 ```
 Read konsol_cli/HANDOFF.md and continue the konsol-cli project.
-Next task: [Git tag v0.8.0, GitOps round-trip, or MCP setup].
+Next task: [connector delete CLI, config.toml-only workflow, or production deploy].
 ```
 
 Read first:

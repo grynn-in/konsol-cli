@@ -39,8 +39,8 @@ def main(
         is_eager=True,
         help="Show version and exit.",
     ),
-    backend: str = typer.Option(
-        "bench",
+    backend: str | None = typer.Option(
+        None,
         "--backend",
         help="Connection mode: bench (local Docker) or api (remote HTTP).",
         envvar="KONSOL_BACKEND",
