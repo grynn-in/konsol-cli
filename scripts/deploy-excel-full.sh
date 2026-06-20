@@ -38,6 +38,7 @@ docker compose cp /tmp/excel-addin-full/index.html frappe_backend:${DEST}/index.
 docker compose cp /tmp/excel-addin-full/functions.js frappe_backend:${DEST}/functions.js
 docker compose cp /tmp/excel-addin-full/functions.json frappe_backend:${DEST}/functions.json
 docker compose cp /tmp/excel-addin-full/manifest.xml frappe_backend:${DEST}/manifest.xml
+docker compose exec -T frappe_backend rm -f ${DEST}/pane-minimal.html ${DEST}/manifest.online.xml
 docker compose cp /tmp/excel-addin-full/api.py frappe_backend:${CONTAINER_PATH}/api.py
 docker compose cp /tmp/excel-addin-full/excel_addin_auth.py frappe_backend:${CONTAINER_PATH}/excel_addin_auth.py
 docker compose cp /tmp/excel-addin-full/excel_addin_cookies.py frappe_backend:${CONTAINER_PATH}/excel_addin_cookies.py
@@ -56,5 +57,5 @@ curl -s "https://demo.konsolidat.com/assets/konsol/excel-addin/manifest.xml" | g
 curl -s "https://demo.konsolidat.com/assets/konsol/excel-addin/index.html" | grep -oE 'v[0-9]+\.[0-9.]+'
 curl -sI "https://demo.konsolidat.com/assets/konsol/excel-addin/functions.json" | grep -iE 'cache-control|access-control-allow-origin'
 
-echo "Done. Sideload fresh manifest:"
-echo "  curl -o ~/Downloads/Konsolidat-Excel-Full.xml 'https://demo.konsolidat.com/assets/konsol/excel-addin/manifest.xml'"
+echo "Done. M365 Admin Center manifest URL:"
+echo "  https://demo.konsolidat.com/assets/konsol/excel-addin/manifest.xml"
