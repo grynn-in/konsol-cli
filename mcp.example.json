@@ -1,14 +1,8 @@
 {
   "mcpServers": {
     "konsol": {
-      "command": "/path/to/konsol_cli/.venv/bin/konsol-mcp",
-      "args": [],
-      "env": {
-        "KONSOL_URL": "http://localhost:8069",
-        "KONSOL_SITE": "konsolidat.local",
-        "KONSOL_API_KEY": "${KONSOL_API_KEY}",
-        "KONSOL_API_SECRET": "${KONSOL_API_SECRET}"
-      }
+      "command": "/path/to/konsol_cli/scripts/run-konsol-mcp.sh",
+      "args": []
     }
   }
 }
