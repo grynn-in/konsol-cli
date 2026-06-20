@@ -9,3 +9,7 @@ secrets.env
 config.local.toml
 .env
 .env.local
+
+# OS / local tooling
+.DS_Store
+scripts/screenshots/node_modules/
