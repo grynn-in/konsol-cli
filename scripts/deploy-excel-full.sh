@@ -53,8 +53,8 @@ EOF
 
 echo "==> Verify"
 curl -s "https://demo.konsolidat.com/assets/konsol/excel-addin/manifest.xml" | grep -E '<Version>|<Id>|KonsolidatAddin'
-curl -s "https://demo.konsolidat.com/assets/konsol/excel-addin/index.html" | grep -o 'v1\.[0-9.]*'
-curl -sI "https://demo.konsolidat.com/assets/konsol/excel-addin/functions.json" | grep -i cache-control
+curl -s "https://demo.konsolidat.com/assets/konsol/excel-addin/index.html" | grep -oE 'v[0-9]+\.[0-9.]+'
+curl -sI "https://demo.konsolidat.com/assets/konsol/excel-addin/functions.json" | grep -iE 'cache-control|access-control-allow-origin'
 
 echo "Done. Sideload fresh manifest:"
 echo "  curl -o ~/Downloads/Konsolidat-Excel-Full.xml 'https://demo.konsolidat.com/assets/konsol/excel-addin/manifest.xml'"
