@@ -4,6 +4,8 @@ Last updated: 2026-06-20 (hot-deploy @ 31db0fa + writeback smoke)
 
 Point the next agent at this file first. Credentials: `~/.config/konsol/secrets.env` only — never in git, HANDOFF, or chat.
 
+**Excel Online add-in (`=K.EPM()`):** see **[HANDOFF-EXCEL-ONLINE.md](./HANDOFF-EXCEL-ONLINE.md)** — **resolved** v2.0.0.0 on Excel Online Mac; fix was Caddy `Access-Control-Allow-Origin *` on add-in assets (cross-origin `functions.json` fetch).
+
 ---
 
 ## Executive summary
