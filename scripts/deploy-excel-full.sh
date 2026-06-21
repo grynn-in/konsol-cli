@@ -55,6 +55,7 @@ docker compose cp /tmp/excel-addin-full/excel_addin_auth.py frappe_backend:${CON
 docker compose cp /tmp/excel-addin-full/excel_addin_cookies.py frappe_backend:${CONTAINER_PATH}/excel_addin_cookies.py
 docker compose cp /tmp/excel-addin-full/hooks.py frappe_backend:${CONTAINER_PATH}/hooks.py
 docker compose exec -T frappe_backend grep -q "def build_cell_map" ${CONTAINER_PATH}/api.py
+docker compose exec -T frappe_backend grep -q "def build_snapshot" ${CONTAINER_PATH}/api.py
 docker compose exec -T frappe_backend test -f ${CONTAINER_PATH}/report_compiler.py
 for icon in icon-16.png icon-32.png icon-64.png icon-80.png; do
   docker compose cp /tmp/excel-addin-full/assets/\$icon frappe_backend:${DEST}/assets/\$icon
@@ -69,7 +70,7 @@ echo "==> Verify"
 curl -s "https://demo.konsolidat.com/assets/konsol/excel-addin/manifest.xml" | grep -E '<Version>|<Id>|KonsolidatAddin'
 curl -s "https://demo.konsolidat.com/assets/konsol/excel-addin/index.html" | grep -oE 'v[0-9]+\.[0-9.]+'
 curl -sI "https://demo.konsolidat.com/assets/konsol/excel-addin/functions.json" | grep -iE 'cache-control|access-control-allow-origin'
-ssh "${SSH_HOST}" "cd ${REMOTE_DIR} && docker compose exec -T frappe_backend grep -q 'def build_cell_map' ${CONTAINER_PATH}/api.py && echo 'build_cell_map: ok'"
+ssh "${SSH_HOST}" "cd ${REMOTE_DIR} && docker compose exec -T frappe_backend grep -q 'def build_cell_map' ${CONTAINER_PATH}/api.py && docker compose exec -T frappe_backend grep -q 'def build_snapshot' ${CONTAINER_PATH}/api.py && echo 'build_snapshot: ok'"
 
 echo "Done. M365 Admin Center manifest URL:"
 echo "  https://demo.konsolidat.com/assets/konsol/excel-addin/manifest.xml"
