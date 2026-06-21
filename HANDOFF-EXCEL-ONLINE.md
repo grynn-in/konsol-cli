@@ -83,10 +83,11 @@ Deploy restarts `frappe_backend`, `frappe_worker`, `frappe_scheduler`. Caddy cha
 
 | Path | Role |
 |------|------|
-| `konsolidat/repo/excel-addin/src/index.html` | Task pane (login + diag) |
-| `konsolidat/repo/excel-addin/src/functions.js` | `=K.EPM()` + token headers |
-| `konsolidat/repo/excel-addin/src/functions.json` | Function metadata |
-| `konsolidat/repo/excel-addin/manifest.demo.xml` | Full manifest (source of truth) |
+| `konsol/konsol/public/excel-addin/index.html` | Task pane (login, Apply report, Messages) — **grynn-in/konsol** |
+| `konsol/konsol/public/excel-addin/functions.js` | `=K.EPM()` + token headers |
+| `konsol/konsol/public/excel-addin/functions.json` | Function metadata |
+| `konsol/konsol/public/excel-addin/manifest.demo.xml` | Full manifest (source of truth) |
+| Clone path in monorepo | `konsolidat/repo/docker/frappe/konsol/` |
 | `konsolidat/repo/docker/caddy/Caddyfile` | CORS, framing, cache headers for add-in assets |
 | `konsolidat/repo/docker/frappe/konsol/konsol/api.py` | `excel_addin_auth`, `epm_batch` |
 | `konsolidat/repo/docker/frappe/konsol/konsol/excel_addin_auth.py` | Bearer tokens |
