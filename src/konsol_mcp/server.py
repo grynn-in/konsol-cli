@@ -3,7 +3,10 @@ from __future__ import annotations
 
 import json
 import os
+from pathlib import Path
 from typing import Any
+
+import yaml
 
 from konsol_cli.backends.api import ApiBackend
 from konsol_cli.settings import Settings
@@ -296,6 +299,149 @@ def diff_config(spec: dict[str, Any], status: str | None = None) -> str:
     """Diff a config bundle against the live site."""
     return _read_diff(_backend().diff_config(spec, status=status), "Diffed config bundle.")
 
+
+# --- M3: GitOps composite ---------------------------------------------------
+
+# Sections of a config diff/bundle, in display order.
+_DIFF_SECTIONS = ("dimensions", "measures", "fact_tables", "connectors")
+
+def _load_bundle_file(path: Path) -> dict[str, Any]:
+    """Load a config bundle from a YAML/JSON file (mirrors commands/config.py).
+
+    Raises ``ValueError`` if the file cannot be parsed into a config object;
+    callers translate that into a ``validation_failed`` envelope.
+    """
+    text = path.read_text()
+    if path.suffix in {".yaml", ".yml"}:
+        data = yaml.safe_load(text)
+    else:
+        data = json.loads(text)
+    if not isinstance(data, dict):
+        raise ValueError(f"{path} must contain a config object (got {type(data).__name__}).")
+    return data
+
+def _diff_key(item: Any) -> Any:
+    """Extract the entity key from a diff item (dict with ``key``, or a string)."""
+    if isinstance(item, dict):
+        return item.get("key")
+    return item
+
+def _bundle_affected_objects(diff: dict[str, Any]) -> list[dict[str, Any]]:
+    """Flatten a config diff into the objects that would be touched."""
+    objects: list[dict[str, Any]] = []
+    for section in _DIFF_SECTIONS:
+        data = diff.get(section) or {}
+        for change in ("added", "modified", "only_on_site"):
+            for item in data.get(change, []):
+                objects.append({"kind": section, "key": _diff_key(item), "change": change})
+    return objects
+
+def _bundle_impact_summary(diff: dict[str, Any]) -> str:
+    """Human-readable per-section change counts for a config diff."""
+    parts: list[str] = []
+    for section in _DIFF_SECTIONS:
+        data = diff.get(section) or {}
+        added = len(data.get("added", []))
+        modified = len(data.get("modified", []))
+        only_on_site = len(data.get("only_on_site", []))
+        if added or modified or only_on_site:
+            parts.append(f"{section}: +{added} ~{modified} -{only_on_site}")
+    return "; ".join(parts) if parts else "No changes detected."
+
+@mcp.tool()
+def apply_model_from_gitops(
+    bundle_path: str,
+    dry_run: bool = True,
+    publish: bool = False,
+    prune: bool = False,
+) -> str:
+    """Apply a GitOps config bundle file to the konsol site (composite).
+
+    Loads the YAML/JSON bundle at ``bundle_path``, diffs it against the live
+    site, and either previews (``dry_run``, the default) or applies it. This
+    composes the ``diff_config`` / ``apply_config`` backend primitives and
+    routes mutations through the konsol publish gate; it never bypasses them.
+
+    Args:
+        bundle_path: Path to a YAML or JSON config bundle file.
+        dry_run: When True (default) only preview the diff — no mutation.
+        publish: When applying, publish each entity after save.
+        prune: When applying, remove site entities absent from the bundle.
+
+    Returns:
+        The serialized response envelope. ``validation_failed`` on a missing,
+        empty, or unparseable bundle (never raises); ``dry_run`` for a
+        preview; ``success`` after a real apply.
+    """
+    if not bundle_path or not str(bundle_path).strip():
+        return _json(
+            format_mcp_response(
+                "validation_failed",
+                "No bundle_path provided.",
+                warnings=["bundle_path is required."],
+            )
+        )
+
+    path = Path(str(bundle_path).strip())
+    if not path.is_file():
+        return _json(
+            format_mcp_response(
+                "validation_failed",
+                f"Bundle path not found: {bundle_path}.",
+                warnings=[f"{bundle_path} is not a readable file."],
+            )
+        )
+
+    try:
+        bundle = _load_bundle_file(path)
+    except Exception as exc:  # noqa: BLE001 - surface any parse error as validation
+        return _json(
+            format_mcp_response(
+                "validation_failed",
+                f"Could not parse bundle {bundle_path}.",
+                warnings=[str(exc)],
+            )
+        )
+
+    if not bundle:
+        return _json(
+            format_mcp_response(
+                "validation_failed",
+                f"Bundle {bundle_path} is empty.",
+                warnings=["Bundle contains no config objects."],
+            )
+        )
+
+    backend = _backend()
+    diff = backend.diff_config(bundle)
+    affected = _bundle_affected_objects(diff)
+    impact = _bundle_impact_summary(diff)
+
+    if dry_run:
+        return _json(
+            format_mcp_response(
+                "dry_run",
+                f"Previewed {bundle_path}; no changes applied.",
+                affected_objects=affected,
+                diff=diff,
+                impact_summary=impact,
+                next_steps=["re-run with dry_run=False to apply"],
+            )
+        )
+
+    summary = backend.apply_config(bundle, publish=publish, prune=prune)
+    warnings = [_PUBLISH_GATE_NOTE] if publish else None
+    return _json(
+        format_mcp_response(
+            "success",
+            f"Applied {bundle_path}.",
+            affected_objects=affected,
+            diff=summary,
+            impact_summary=impact,
+            warnings=warnings,
+            next_steps=["publish_model_changes to rebuild"],
+        )
+    )
 
 def main() -> None:
     mcp.run()
