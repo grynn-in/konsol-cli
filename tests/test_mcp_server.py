@@ -332,3 +332,127 @@ def test_publish_model_changes_nothing_to_publish(monkeypatch):
     assert data["warnings"]
     assert backend.published == []
     assert backend.apply_schema_calls == []
+
+
+# --- M5: provision_and_test_connector composite ----------------------------
+
+
+class _ConnectorBackend:
+    """Fake backend recording provision/test calls for M5 tests."""
+
+    def __init__(self, connector=None, writeback=None, raise_on_get=False):
+        # ``connector`` is what get_connector returns (None => missing).
+        self._connector = (
+            connector
+            if connector is not None
+            else {"name": "CONN-00001", "connector_name": "D365 Prod"}
+        )
+        self._writeback = writeback if writeback is not None else {"ok": True}
+        self._raise_on_get = raise_on_get
+        self.get_calls = []
+        self.provision_calls = []
+        self.test_calls = []
+
+    def get_connector(self, name):
+        self.get_calls.append(name)
+        if self._raise_on_get:
+            raise RuntimeError("boom")
+        return self._connector
+
+    def provision_connector_airbyte(self, name):
+        self.provision_calls.append(name)
+        return {"source_id": "src-1", "connection_id": "conn-1"}
+
+    def test_connector_writeback(self, name):
+        self.test_calls.append(name)
+        return self._writeback
+
+
+def test_provision_and_test_connector_validation_failed_missing(monkeypatch):
+    """A connector get that returns nothing is rejected before provisioning."""
+    server = importlib.import_module("konsol_mcp.server")
+    backend = _ConnectorBackend(connector={})
+    monkeypatch.setattr(server, "_backend", lambda: backend)
+
+    data = json.loads(server.provision_and_test_connector("CONN-99999"))
+
+    assert set(data) == ENVELOPE_KEYS
+    assert data["status"] == "validation_failed"
+    assert data["warnings"]
+    assert backend.provision_calls == []
+    assert backend.test_calls == []
+
+
+def test_provision_and_test_connector_validation_failed_blank_name(monkeypatch):
+    """A blank name is rejected before any backend call."""
+    server = importlib.import_module("konsol_mcp.server")
+    backend = _ConnectorBackend()
+    monkeypatch.setattr(server, "_backend", lambda: backend)
+
+    data = json.loads(server.provision_and_test_connector("   "))
+
+    assert data["status"] == "validation_failed"
+    assert backend.get_calls == []
+    assert backend.provision_calls == []
+    assert backend.test_calls == []
+
+
+def test_provision_and_test_connector_validation_failed_get_raises(monkeypatch):
+    """A get_connector that raises is treated as validation_failed, not propagated."""
+    server = importlib.import_module("konsol_mcp.server")
+    backend = _ConnectorBackend(raise_on_get=True)
+    monkeypatch.setattr(server, "_backend", lambda: backend)
+
+    data = json.loads(server.provision_and_test_connector("CONN-00001"))
+
+    assert data["status"] == "validation_failed"
+    assert backend.provision_calls == []
+    assert backend.test_calls == []
+
+
+def test_provision_and_test_connector_dry_run_previews(monkeypatch):
+    """dry_run (default) previews without provisioning or testing."""
+    server = importlib.import_module("konsol_mcp.server")
+    backend = _ConnectorBackend()
+    monkeypatch.setattr(server, "_backend", lambda: backend)
+
+    data = json.loads(server.provision_and_test_connector("CONN-00001"))
+
+    assert set(data) == ENVELOPE_KEYS
+    assert data["status"] == "dry_run"
+    assert backend.provision_calls == []
+    assert backend.test_calls == []
+    assert data["next_steps"]
+    assert data["affected_objects"]
+
+
+def test_provision_and_test_connector_apply_success(monkeypatch):
+    """dry_run=False provisions then tests once each; clean writeback => success."""
+    server = importlib.import_module("konsol_mcp.server")
+    backend = _ConnectorBackend()
+    monkeypatch.setattr(server, "_backend", lambda: backend)
+
+    data = json.loads(
+        server.provision_and_test_connector("CONN-00001", dry_run=False)
+    )
+
+    assert data["status"] == "success"
+    assert backend.provision_calls == ["CONN-00001"]
+    assert backend.test_calls == ["CONN-00001"]
+    assert data["affected_objects"]
+
+
+def test_provision_and_test_connector_failed_writeback_warns(monkeypatch):
+    """A failed write-back is surfaced as a warning with status=error."""
+    server = importlib.import_module("konsol_mcp.server")
+    backend = _ConnectorBackend(writeback={"ok": False, "error": "bad creds"})
+    monkeypatch.setattr(server, "_backend", lambda: backend)
+
+    data = json.loads(
+        server.provision_and_test_connector("CONN-00001", dry_run=False)
+    )
+
+    assert data["status"] == "error"
+    assert backend.provision_calls == ["CONN-00001"]
+    assert backend.test_calls == ["CONN-00001"]
+    assert data["warnings"]

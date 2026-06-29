@@ -574,5 +574,120 @@ def publish_model_changes(
     )
 
 
+# --- M5: provision_and_test_connector composite -----------------------------
+
+def _writeback_failed(result: Any) -> bool:
+    """Inspect a write-back test result for a failure signal.
+
+    A failure is any of: a truthy ``error`` key, or an explicit falsy
+    ``ok``/``success`` flag. A result without any of those signals is treated
+    as a pass (so a bare ``{}`` or summary dict does not spuriously fail).
+    """
+    if not isinstance(result, dict):
+        return False
+    if result.get("error"):
+        return True
+    for flag in ("ok", "success"):
+        if flag in result and not result[flag]:
+            return True
+    return False
+
+@mcp.tool()
+def provision_and_test_connector(name: str, dry_run: bool = True) -> str:
+    """Provision a Connector's Airbyte source then test its write-back (composite).
+
+    Validates that the Connector exists (via ``get_connector``), then either
+    previews (``dry_run``, the default) or runs the two-step provision/test
+    flow: ``provision_connector_airbyte`` followed by
+    ``test_connector_writeback``. This composes the existing backend
+    primitives and never bypasses provisioning/test gates.
+
+    Args:
+        name: Connector ID (``CONN-...``) or connector_name to provision/test.
+        dry_run: When True (default) only preview — no provision/test call.
+
+    Returns:
+        The serialized response envelope. ``validation_failed`` when ``name``
+        is blank or the connector cannot be fetched (never raises);
+        ``dry_run`` for a preview; ``success`` after a clean run; ``error``
+        when the write-back test reports a failure (provisioning still ran —
+        the failure is surfaced in ``warnings``).
+    """
+    if not name or not str(name).strip():
+        return _json(
+            format_mcp_response(
+                "validation_failed",
+                "No connector name provided.",
+                warnings=["name is required."],
+            )
+        )
+
+    name = str(name).strip()
+    backend = _backend()
+
+    try:
+        connector = backend.get_connector(name)
+    except Exception as exc:  # noqa: BLE001 - missing connector => validation
+        return _json(
+            format_mcp_response(
+                "validation_failed",
+                f"Connector {name} could not be fetched.",
+                warnings=[str(exc)],
+            )
+        )
+
+    if not connector:
+        return _json(
+            format_mcp_response(
+                "validation_failed",
+                f"Connector {name} not found.",
+                warnings=[f"No connector matches {name}."],
+            )
+        )
+
+    connector_label = _doc_name(connector) or name
+
+    if dry_run:
+        return _json(
+            format_mcp_response(
+                "dry_run",
+                f"Would provision Airbyte and test write-back for {connector_label}.",
+                affected_objects=[connector_label],
+                impact_summary=(
+                    "provision_connector_airbyte then test_connector_writeback "
+                    f"for {connector_label}"
+                ),
+                next_steps=["re-run with dry_run=False to provision and test"],
+            )
+        )
+
+    provision_result = backend.provision_connector_airbyte(name)
+    writeback_result = backend.test_connector_writeback(name)
+
+    diff = {"provision": provision_result, "writeback": writeback_result}
+    if _writeback_failed(writeback_result):
+        return _json(
+            format_mcp_response(
+                "error",
+                f"Provisioned {connector_label} but write-back test failed.",
+                affected_objects=[connector_label],
+                diff=diff,
+                warnings=[
+                    f"Write-back test failed for {connector_label}: {writeback_result}"
+                ],
+                next_steps=["fix the connector write-back credentials, then re-run"],
+            )
+        )
+
+    return _json(
+        format_mcp_response(
+            "success",
+            f"Provisioned Airbyte and verified write-back for {connector_label}.",
+            affected_objects=[connector_label],
+            diff=diff,
+            next_steps=["run the Airbyte sync to extract data"],
+        )
+    )
+
 def main() -> None:
     mcp.run()
