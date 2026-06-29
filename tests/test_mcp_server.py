@@ -180,6 +180,28 @@ def test_apply_model_from_gitops_apply_path(monkeypatch, tmp_path):
     assert data["affected_objects"]
 
 
+def test_apply_model_from_gitops_apply_backend_error_returns_envelope(
+    monkeypatch, tmp_path
+):
+    """A backend raise during apply_config becomes a status=error envelope (M3)."""
+    server = importlib.import_module("konsol_mcp.server")
+    backend = _GitOpsBackend()
+
+    def _boom(spec, publish=False, prune=False):
+        raise RuntimeError("Frappe API error: 500")
+
+    backend.apply_config = _boom
+    monkeypatch.setattr(server, "_backend", lambda: backend)
+    path = _write_bundle(tmp_path)
+
+    data = json.loads(server.apply_model_from_gitops(str(path), dry_run=False))
+
+    assert set(data) == ENVELOPE_KEYS
+    assert data["status"] == "error"
+    assert data["warnings"]
+    assert data["affected_objects"]  # records what would have been touched
+
+
 # --- M4: publish_model_changes composite -----------------------------------
 
 
@@ -296,8 +318,10 @@ def test_publish_model_changes_apply_publishes_each_then_applies_schema(monkeypa
     assert ("measure", "GrossMargin") in backend.published
     assert backend.apply_schema_calls == [False]
     assert data["warnings"]  # publish-gate note
-    names = set(data["affected_objects"])
-    assert {"Region", "Entity", "GrossMargin"} <= names
+    # success path emits {"kind","key"} dicts, same shape as dry_run (M4)
+    assert all(set(obj) == {"kind", "key"} for obj in data["affected_objects"])
+    keys = {obj["key"] for obj in data["affected_objects"]}
+    assert {"Region", "Entity", "GrossMargin"} <= keys
 
 
 def test_publish_model_changes_explicit_names(monkeypatch):
@@ -332,6 +356,54 @@ def test_publish_model_changes_nothing_to_publish(monkeypatch):
     assert data["warnings"]
     assert backend.published == []
     assert backend.apply_schema_calls == []
+
+
+def test_publish_model_changes_mid_loop_error_records_partial(monkeypatch):
+    """A backend raise mid-publish returns status=error recording applied vs not (M4)."""
+    server = importlib.import_module("konsol_mcp.server")
+    backend = _PublishBackend()
+
+    def _boom(name):
+        raise RuntimeError("Frappe API error: 500")
+
+    backend.publish_measure = _boom
+    monkeypatch.setattr(server, "_backend", lambda: backend)
+
+    data = json.loads(server.publish_model_changes(dry_run=False))
+
+    assert set(data) == ENVELOPE_KEYS
+    assert data["status"] == "error"
+    # the two dimensions were published before the measure failed (partial mutation)
+    assert ("dimension", "Region") in backend.published
+    assert ("dimension", "Entity") in backend.published
+    # schema was never applied because publishing did not complete
+    assert backend.apply_schema_calls == []
+    # affected_objects records exactly what succeeded, as {"kind","key"} dicts
+    keys = {obj["key"] for obj in data["affected_objects"]}
+    assert keys == {"Region", "Entity"}
+    assert data["diff"]["failed"]["key"] == "GrossMargin"
+    assert data["warnings"]
+
+
+def test_publish_model_changes_apply_schema_error_records_published(monkeypatch):
+    """A raise in apply_schema after publishing returns status=error (M4)."""
+    server = importlib.import_module("konsol_mcp.server")
+    backend = _PublishBackend()
+
+    def _boom(run_dbt=False):
+        raise RuntimeError("Frappe API error: 500")
+
+    backend.apply_schema = _boom
+    monkeypatch.setattr(server, "_backend", lambda: backend)
+
+    data = json.loads(server.publish_model_changes(dry_run=False))
+
+    assert data["status"] == "error"
+    # everything published before apply_schema blew up
+    assert len(backend.published) == 3
+    keys = {obj["key"] for obj in data["affected_objects"]}
+    assert {"Region", "Entity", "GrossMargin"} <= keys
+    assert data["warnings"]
 
 
 # --- M5: provision_and_test_connector composite ----------------------------
@@ -455,6 +527,50 @@ def test_provision_and_test_connector_failed_writeback_warns(monkeypatch):
     assert data["status"] == "error"
     assert backend.provision_calls == ["CONN-00001"]
     assert backend.test_calls == ["CONN-00001"]
+
+
+def test_provision_and_test_connector_provision_soft_fail(monkeypatch):
+    """A provision step that soft-fails ({"ok": False}) gates before testing (M5)."""
+    server = importlib.import_module("konsol_mcp.server")
+    backend = _ConnectorBackend()
+
+    def _soft_fail(name):
+        backend.provision_calls.append(name)
+        return {"ok": False, "error": "extract creds rejected"}
+
+    backend.provision_connector_airbyte = _soft_fail
+    monkeypatch.setattr(server, "_backend", lambda: backend)
+
+    data = json.loads(
+        server.provision_and_test_connector("CONN-00001", dry_run=False)
+    )
+
+    assert set(data) == ENVELOPE_KEYS
+    assert data["status"] == "error"
+    assert backend.provision_calls == ["CONN-00001"]
+    # write-back is never tested once provisioning fails
+    assert backend.test_calls == []
+    assert data["warnings"]
+
+
+def test_provision_and_test_connector_provision_raises(monkeypatch):
+    """A backend raise during provisioning becomes a status=error envelope (M5)."""
+    server = importlib.import_module("konsol_mcp.server")
+    backend = _ConnectorBackend()
+
+    def _boom(name):
+        raise RuntimeError("Frappe API error: 500")
+
+    backend.provision_connector_airbyte = _boom
+    monkeypatch.setattr(server, "_backend", lambda: backend)
+
+    data = json.loads(
+        server.provision_and_test_connector("CONN-00001", dry_run=False)
+    )
+
+    assert data["status"] == "error"
+    assert backend.test_calls == []
+    assert data["warnings"]
 
 
 # --- M6: onboard_new_entity composite --------------------------------------
@@ -602,6 +718,30 @@ def test_onboard_new_entity_apply_publish_propagates(monkeypatch):
     assert backend.dimensions[0][1] is True
     assert data["warnings"]
     assert any("publish gate" in w.lower() for w in data["warnings"])
+
+
+def test_onboard_new_entity_mid_loop_error_records_partial(monkeypatch):
+    """A backend raise mid-onboard returns status=error recording applied vs not (M6)."""
+    server = importlib.import_module("konsol_mcp.server")
+    backend = _OnboardBackend()
+
+    def _boom(spec, publish=False):
+        raise RuntimeError("Frappe API error: 500")
+
+    backend.upsert_dimension = _boom
+    monkeypatch.setattr(server, "_backend", lambda: backend)
+
+    data = json.loads(server.onboard_new_entity(_entity_spec(), dry_run=False))
+
+    assert set(data) == ENVELOPE_KEYS
+    assert data["status"] == "error"
+    # the connector was upserted before the dimension failed (partial mutation)
+    assert len(backend.connectors) == 1
+    # affected_objects records only the connector that succeeded
+    kinds = [obj["kind"] for obj in data["affected_objects"]]
+    assert kinds == ["connector"]
+    assert data["diff"]["failed"]["kind"] == "dimension"
+    assert data["warnings"]
 
 
 # --- M7: preview_impact composite (read-only) ------------------------------

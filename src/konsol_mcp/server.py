@@ -429,7 +429,22 @@ def apply_model_from_gitops(
             )
         )
 
-    summary = backend.apply_config(bundle, publish=publish, prune=prune)
+    try:
+        summary = backend.apply_config(bundle, publish=publish, prune=prune)
+    except Exception as exc:  # noqa: BLE001 - surface backend failure as error envelope
+        return _json(
+            format_mcp_response(
+                "error",
+                f"Failed to apply {bundle_path}; the site may hold partial changes.",
+                affected_objects=affected,
+                diff=diff,
+                impact_summary=impact,
+                warnings=[f"apply_config failed: {exc}"],
+                next_steps=[
+                    "inspect the konsol site for partially-applied changes, then re-run"
+                ],
+            )
+        )
     warnings = [_PUBLISH_GATE_NOTE] if publish else None
     return _json(
         format_mcp_response(
@@ -557,11 +572,45 @@ def publish_model_changes(
             )
         )
 
-    published: list[str] = []
-    for item in discovered:
-        getattr(backend, _PUBLISH_BY_KIND[item["kind"]])(item["key"])
-        published.append(item["key"])
-    backend.apply_schema(run_dbt=False)
+    published: list[dict[str, Any]] = []
+    for idx, item in enumerate(discovered):
+        try:
+            getattr(backend, _PUBLISH_BY_KIND[item["kind"]])(item["key"])
+        except Exception as exc:  # noqa: BLE001 - record partial progress before failing
+            return _json(
+                format_mcp_response(
+                    "error",
+                    f"Published {len(published)} model change(s) before failing on "
+                    f"{item['kind']} {item['key']}.",
+                    affected_objects=published,
+                    diff={
+                        "published": published,
+                        "failed": {"kind": item["kind"], "key": item["key"]},
+                        "not_attempted": discovered[idx + 1 :],
+                    },
+                    warnings=[
+                        f"publish failed for {item['kind']} {item['key']}: {exc}"
+                    ],
+                    next_steps=[
+                        "resolve the error, then re-run to publish the remaining models"
+                    ],
+                )
+            )
+        published.append({"kind": item["kind"], "key": item["key"]})
+
+    try:
+        backend.apply_schema(run_dbt=False)
+    except Exception as exc:  # noqa: BLE001 - models published but schema apply failed
+        return _json(
+            format_mcp_response(
+                "error",
+                f"Published {len(published)} model change(s) but apply_schema failed.",
+                affected_objects=published,
+                diff={"published": published},
+                warnings=[f"apply_schema failed: {exc}"],
+                next_steps=["re-run apply_schema once the error is resolved"],
+            )
+        )
 
     return _json(
         format_mcp_response(
@@ -661,8 +710,46 @@ def provision_and_test_connector(name: str, dry_run: bool = True) -> str:
             )
         )
 
-    provision_result = backend.provision_connector_airbyte(name)
-    writeback_result = backend.test_connector_writeback(name)
+    try:
+        provision_result = backend.provision_connector_airbyte(name)
+    except Exception as exc:  # noqa: BLE001 - surface provision failure as error envelope
+        return _json(
+            format_mcp_response(
+                "error",
+                f"Provisioning Airbyte failed for {connector_label}.",
+                affected_objects=[connector_label],
+                warnings=[f"provision_connector_airbyte failed: {exc}"],
+                next_steps=["fix the connector extract credentials, then re-run"],
+            )
+        )
+
+    if _writeback_failed(provision_result):
+        return _json(
+            format_mcp_response(
+                "error",
+                f"Provisioning reported a failure for {connector_label}.",
+                affected_objects=[connector_label],
+                diff={"provision": provision_result},
+                warnings=[
+                    f"Provisioning failed for {connector_label}: {provision_result}"
+                ],
+                next_steps=["fix the connector extract credentials, then re-run"],
+            )
+        )
+
+    try:
+        writeback_result = backend.test_connector_writeback(name)
+    except Exception as exc:  # noqa: BLE001 - provision ran but write-back test raised
+        return _json(
+            format_mcp_response(
+                "error",
+                f"Provisioned {connector_label} but the write-back test raised.",
+                affected_objects=[connector_label],
+                diff={"provision": provision_result},
+                warnings=[f"test_connector_writeback failed: {exc}"],
+                next_steps=["fix the connector write-back credentials, then re-run"],
+            )
+        )
 
     diff = {"provision": provision_result, "writeback": writeback_result}
     if _writeback_failed(writeback_result):
@@ -825,12 +912,38 @@ def onboard_new_entity(spec: dict[str, Any], dry_run: bool = True) -> str:
 
     backend = _backend()
     results: dict[str, list[Any]] = {"connectors": [], "dimensions": []}
-    for item in plan:
-        if item["kind"] == "connector":
-            results["connectors"].append(backend.upsert_connector(item["spec"]))
-        else:  # dimension
-            results["dimensions"].append(
-                backend.upsert_dimension(item["spec"], publish=publish)
+    for idx, item in enumerate(plan):
+        try:
+            if item["kind"] == "connector":
+                results["connectors"].append(backend.upsert_connector(item["spec"]))
+            else:  # dimension
+                results["dimensions"].append(
+                    backend.upsert_dimension(item["spec"], publish=publish)
+                )
+        except Exception as exc:  # noqa: BLE001 - record partial progress before failing
+            applied = [{"kind": p["kind"], "key": p["key"]} for p in plan[:idx]]
+            return _json(
+                format_mcp_response(
+                    "error",
+                    f"Onboarded {idx} of {len(plan)} object(s) for entity {entity} "
+                    f"before failing on {item['kind']} {item['key']}.",
+                    affected_objects=applied,
+                    diff={
+                        "results": results,
+                        "failed": {"kind": item["kind"], "key": item["key"]},
+                        "not_attempted": [
+                            {"kind": p["kind"], "key": p["key"]}
+                            for p in plan[idx + 1 :]
+                        ],
+                    },
+                    impact_summary=impact,
+                    warnings=[
+                        f"upsert failed for {item['kind']} {item['key']}: {exc}"
+                    ],
+                    next_steps=[
+                        "resolve the error, then re-run to onboard the remaining objects"
+                    ],
+                )
             )
 
     warnings = [_PUBLISH_GATE_NOTE] if publish else None
