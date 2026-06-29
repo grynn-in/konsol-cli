@@ -443,5 +443,136 @@ def apply_model_from_gitops(
         )
     )
 
+# --- M4: publish_model_changes composite ------------------------------------
+
+# Model doctypes this composite can publish, in display order.
+_MODEL_KINDS = ("dimension", "measure", "fact_table")
+
+# Per-kind backend method names for draft discovery and publishing.
+_LIST_BY_KIND = {
+    "dimension": "list_dimensions",
+    "measure": "list_measures",
+    "fact_table": "list_fact_tables",
+}
+_PUBLISH_BY_KIND = {
+    "dimension": "publish_dimension",
+    "measure": "publish_measure",
+    "fact_table": "publish_fact_table",
+}
+
+
+@mcp.tool()
+def publish_model_changes(
+    names: list[str] | None = None,
+    kinds: list[str] | None = None,
+    dry_run: bool = True,
+) -> str:
+    """Publish Draft model changes through the konsol publish gate (composite).
+
+    Discovers the models that need publishing — Draft Dimensions, Measures,
+    and Fact Tables (optionally narrowed by ``kinds`` and/or an explicit
+    ``names`` allow-list) — and either previews them (``dry_run``, the
+    default) or publishes each one and applies the schema once. This composes
+    the ``list_*`` / ``publish_*`` / ``apply_schema`` backend primitives and
+    routes every mutation through the governed publish gate; it never bypasses
+    it.
+
+    Args:
+        names: Optional allow-list of model names to publish. When given,
+            only discovered Draft models whose name is in this list are
+            published.
+        kinds: Optional subset of ``{"dimension", "measure", "fact_table"}``
+            to limit discovery to those doctypes.
+        dry_run: When True (default) only list the would-be-published models —
+            no mutation.
+
+    Returns:
+        The serialized response envelope. ``validation_failed`` on a bad
+        ``names``/``kinds`` argument (never raises); ``dry_run`` for a
+        preview; ``success`` after publishing (or when there is nothing to
+        publish).
+    """
+    if names is not None and not isinstance(names, list):
+        return _json(
+            format_mcp_response(
+                "validation_failed",
+                "names must be a list of model names.",
+                warnings=[f"Expected a list for names, got {type(names).__name__}."],
+            )
+        )
+
+    if kinds is not None:
+        if not isinstance(kinds, list):
+            return _json(
+                format_mcp_response(
+                    "validation_failed",
+                    "kinds must be a list.",
+                    warnings=[f"Expected a list for kinds, got {type(kinds).__name__}."],
+                )
+            )
+        invalid = [k for k in kinds if k not in _MODEL_KINDS]
+        if invalid:
+            return _json(
+                format_mcp_response(
+                    "validation_failed",
+                    "Unknown model kind(s) requested.",
+                    warnings=[
+                        f"Invalid kinds {invalid}; valid kinds are {list(_MODEL_KINDS)}."
+                    ],
+                )
+            )
+
+    selected_kinds = tuple(kinds) if kinds else _MODEL_KINDS
+    backend = _backend()
+
+    # Discover Draft models for each selected kind.
+    discovered: list[dict[str, Any]] = []
+    for kind in selected_kinds:
+        docs = getattr(backend, _LIST_BY_KIND[kind])(status="Draft")
+        for doc in docs or []:
+            name = _doc_name(doc)
+            if name is not None:
+                discovered.append({"kind": kind, "key": name})
+
+    if names is not None:
+        wanted = set(names)
+        discovered = [item for item in discovered if item["key"] in wanted]
+
+    if not discovered:
+        return _json(
+            format_mcp_response(
+                "success",
+                "No Draft model changes to publish.",
+                warnings=["nothing to publish"],
+            )
+        )
+
+    if dry_run:
+        return _json(
+            format_mcp_response(
+                "dry_run",
+                f"{len(discovered)} model change(s) would be published.",
+                affected_objects=discovered,
+                next_steps=["re-run with dry_run=False to publish"],
+            )
+        )
+
+    published: list[str] = []
+    for item in discovered:
+        getattr(backend, _PUBLISH_BY_KIND[item["kind"]])(item["key"])
+        published.append(item["key"])
+    backend.apply_schema(run_dbt=False)
+
+    return _json(
+        format_mcp_response(
+            "success",
+            f"Published {len(published)} model change(s) and applied schema.",
+            affected_objects=published,
+            warnings=[_PUBLISH_GATE_NOTE],
+            next_steps=["apply_schema(run_dbt=True) to rebuild dbt models"],
+        )
+    )
+
+
 def main() -> None:
     mcp.run()
