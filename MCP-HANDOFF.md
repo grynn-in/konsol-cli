@@ -46,7 +46,7 @@ Signature: `format_mcp_response(status, message, *, affected_objects=None, diff=
 **Fix agent:** apply the review's blocking findings, keep tests green, commit (`fix(mcp): M-N address review`), STOP.
 
 ## Current state
-**Done:** none yet — M1 is first.
+**Done:** M1 — `format_mcp_response` in `src/konsol_mcp/responses.py` (pure function, envelope contract above; uuid4 hex `tool_call_id` when omitted; default empty collections are fresh per call). Tested in `tests/test_mcp_responses.py` (7 tests). Full suite green (30 passed). No `server.py` changes yet. Commit `94f1532`.
 
 ## Next
-**M1 — `format_mcp_response` helper.** Create `src/konsol_mcp/responses.py` with the function above + `tests/test_mcp_responses.py` (RED first): default empty collections; passed `tool_call_id` round-trips; generated id is a 32-char hex when omitted; each status value accepted; envelope has exactly the documented keys. No server.py changes yet. Then point *Next* at M2.
+**M2 — Envelope on all existing tools.** Wrap every current `@mcp.tool()` in `src/konsol_mcp/server.py` so it returns `_json(format_mcp_response(...))` instead of raw `_json(data)`. Reads → `status="success"`, data in `affected_objects` (lists) or `diff` (`diff_config`/`export_config`); mutators (upsert/publish/unpublish/apply/provision/delete) → `status="success"`, `affected_objects=[name]`, publish-gate notes in `warnings`. Import `format_mcp_response` from `konsol_mcp.responses`. Extend `tests/test_mcp_server.py` to assert the envelope keys on a representative read + a representative mutate tool (mock the backend / its `_call`). Keep tool names/signatures unchanged (backward compatible). RED first, then GREEN, full suite, commit. Then point *Next* at M3.

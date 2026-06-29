@@ -3,7 +3,7 @@
 Genuine gaps only (verified: P&L/BS/variance/`=EPM()` templates/ownership+driver macros already exist; this loop is the *new* MCP work). Context + envelope contract + loop protocol: `MCP-HANDOFF.md`. Branch `feat/mcp-composite-tools`. One PRD per agent; strict TDD (`python -m pytest tests/ -q`); each PRD reviewed ≤2× then fixed.
 
 ## P2 — structured output foundation
-- [ ] **M1 — `format_mcp_response` helper.** `src/konsol_mcp/responses.py` + `tests/test_mcp_responses.py`. The envelope contract in the handoff (status/message/affected_objects/diff/warnings/impact_summary/next_steps/tool_call_id; uuid4 hex when id omitted). Pure function, no I/O.
+- [x] **M1 — `format_mcp_response` helper.** `src/konsol_mcp/responses.py` + `tests/test_mcp_responses.py`. The envelope contract in the handoff (status/message/affected_objects/diff/warnings/impact_summary/next_steps/tool_call_id; uuid4 hex when id omitted). Pure function, no I/O.
 - [ ] **M2 — Envelope on all existing tools.** Wrap every current `@mcp.tool()` in `server.py` so it returns `_json(format_mcp_response(...))` instead of raw `_json(data)`: reads → `status="success"`, data in `affected_objects` (lists) or `diff` (diff_config/export); mutators (upsert/publish/unpublish/apply/provision/delete) → `status="success"`, `affected_objects=[name]`, publish-gate notes in `warnings`. Extend `tests/test_mcp_server.py` to assert the envelope keys on a representative read + mutate tool. Keep tool names/signatures unchanged (backward compatible surface).
 
 ## P1 — composite tools (compose existing `ApiBackend` primitives; `dry_run=True` default)
