@@ -847,5 +847,168 @@ def onboard_new_entity(spec: dict[str, Any], dry_run: bool = True) -> str:
     )
 
 
+# --- M7: preview_impact composite (read-only) -------------------------------
+
+# Limitation surfaced on every preview: the backend has no transitive lineage
+# endpoint, so impact is approximated from the config diff + schema status.
+_IMPACT_LIMITATION_NOTE = (
+    "Impact derived from config diff + schema status; no transitive lineage / "
+    "blast-radius endpoint is available, so downstream effects are approximate."
+)
+
+
+def _published_downstream_count(status: Any) -> int | None:
+    """Best-effort count of currently Published models from a schema-status payload.
+
+    Walks the (opaque) schema-status structure and sums any integer values keyed
+    by ``"Published"`` (case-insensitive). Returns ``None`` when no such counts
+    are present, so callers can omit the note rather than report a misleading 0.
+    """
+    found = False
+    total = 0
+
+    def _walk(obj: Any) -> None:
+        nonlocal found, total
+        if isinstance(obj, dict):
+            for key, value in obj.items():
+                if (
+                    isinstance(key, str)
+                    and key.lower() == "published"
+                    and isinstance(value, int)
+                    and not isinstance(value, bool)
+                ):
+                    found = True
+                    total += value
+                else:
+                    _walk(value)
+        elif isinstance(obj, list):
+            for item in obj:
+                _walk(item)
+
+    _walk(status)
+    return total if found else None
+
+
+@mcp.tool()
+def preview_impact(
+    bundle_path: str | None = None,
+    names: list[str] | None = None,
+) -> str:
+    """Preview the downstream blast radius of a proposed model change (read-only).
+
+    Combines the read-only ``diff_config`` (what a bundle would change) and
+    ``get_schema_status`` (current registry / published counts + pipeline
+    status) primitives to report the objects a change would touch and how many
+    models are currently published downstream. This tool **never mutates,
+    publishes, or applies anything** — it always returns ``status="dry_run"``.
+
+    At least one input is required:
+
+    - ``bundle_path``: a YAML/JSON config bundle file to diff against the site.
+    - ``names``: an explicit list of model names to assess.
+
+    The backend exposes no true transitive-lineage endpoint, so the impact is
+    approximated from the diff + schema status; that limitation is always noted
+    in ``warnings``.
+
+    Args:
+        bundle_path: Optional path to a YAML or JSON config bundle file.
+        names: Optional explicit list of model names to assess.
+
+    Returns:
+        The serialized response envelope. ``validation_failed`` when no input is
+        given, ``names`` is not a list, or ``bundle_path`` is not a readable /
+        parseable file (never raises); otherwise ``dry_run`` with the touched
+        objects in ``affected_objects`` and a human ``impact_summary``.
+    """
+    if names is not None and not isinstance(names, list):
+        return _json(
+            format_mcp_response(
+                "validation_failed",
+                "names must be a list of model names.",
+                warnings=[f"Expected a list for names, got {type(names).__name__}."],
+            )
+        )
+
+    bundle_path_str = str(bundle_path).strip() if bundle_path else ""
+    if not bundle_path_str and not names:
+        return _json(
+            format_mcp_response(
+                "validation_failed",
+                "Provide bundle_path and/or names to preview.",
+                warnings=["At least one of bundle_path or names is required."],
+            )
+        )
+
+    bundle: dict[str, Any] | None = None
+    if bundle_path_str:
+        path = Path(bundle_path_str)
+        if not path.is_file():
+            return _json(
+                format_mcp_response(
+                    "validation_failed",
+                    f"Bundle path not found: {bundle_path}.",
+                    warnings=[f"{bundle_path} is not a readable file."],
+                )
+            )
+        try:
+            bundle = _load_bundle_file(path)
+        except Exception as exc:  # noqa: BLE001 - surface any parse error as validation
+            return _json(
+                format_mcp_response(
+                    "validation_failed",
+                    f"Could not parse bundle {bundle_path}.",
+                    warnings=[str(exc)],
+                )
+            )
+        if not bundle:
+            return _json(
+                format_mcp_response(
+                    "validation_failed",
+                    f"Bundle {bundle_path} is empty.",
+                    warnings=["Bundle contains no config objects."],
+                )
+            )
+
+    backend = _backend()
+    affected: list[dict[str, Any]] = []
+    impact_parts: list[str] = []
+    diff_payload: dict[str, Any] = {}
+
+    if bundle is not None:
+        config_diff = backend.diff_config(bundle)
+        affected.extend(_bundle_affected_objects(config_diff))
+        impact_parts.append(_bundle_impact_summary(config_diff))
+        diff_payload["config_diff"] = config_diff
+
+    if names:
+        for name in names:
+            affected.append({"kind": "model", "key": name, "change": "assess"})
+        impact_parts.append(f"{len(names)} named model(s) to assess")
+
+    schema_status = backend.get_schema_status()
+    diff_payload["schema_status"] = schema_status
+    published = _published_downstream_count(schema_status)
+    if published is not None:
+        impact_parts.append(f"{published} published model(s) currently downstream")
+
+    impact = "; ".join(part for part in impact_parts if part) or "No impact detected."
+
+    return _json(
+        format_mcp_response(
+            "dry_run",
+            f"Previewed impact for {len(affected)} object(s); nothing changed.",
+            affected_objects=affected,
+            diff=diff_payload,
+            impact_summary=impact,
+            warnings=[_IMPACT_LIMITATION_NOTE],
+            next_steps=[
+                "apply_model_from_gitops to apply the bundle",
+                "publish_model_changes to publish Draft models",
+            ],
+        )
+    )
+
+
 def main() -> None:
     mcp.run()

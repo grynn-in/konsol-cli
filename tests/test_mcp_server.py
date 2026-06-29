@@ -602,4 +602,132 @@ def test_onboard_new_entity_apply_publish_propagates(monkeypatch):
     assert backend.dimensions[0][1] is True
     assert data["warnings"]
     assert any("publish gate" in w.lower() for w in data["warnings"])
+
+
+# --- M7: preview_impact composite (read-only) ------------------------------
+
+
+class _PreviewBackend:
+    """Read-only fake backend for M7 tests (diff_config + get_schema_status only).
+
+    Deliberately exposes no mutating methods, so any accidental
+    upsert/publish/apply call surfaces as an AttributeError and fails the test.
+    """
+
+    def __init__(self):
+        self.diff_calls = []
+        self.status_calls = 0
+
+    def diff_config(self, spec, status=None):
+        self.diff_calls.append(spec)
+        return _FAKE_DIFF
+
+    def get_schema_status(self):
+        self.status_calls += 1
+        return {
+            "registry": {
+                "dimension": {"Published": 5, "Draft": 2},
+                "measure": {"Published": 3},
+            },
+            "pending_builds": [],
+        }
+
+
+def test_preview_impact_validation_failed_no_input(monkeypatch):
+    """Neither bundle_path nor names given is rejected before any backend call."""
+    server = importlib.import_module("konsol_mcp.server")
+    backend = _PreviewBackend()
+    monkeypatch.setattr(server, "_backend", lambda: backend)
+
+    data = json.loads(server.preview_impact())
+
+    assert set(data) == ENVELOPE_KEYS
+    assert data["status"] == "validation_failed"
+    assert data["warnings"]
+    assert backend.diff_calls == []
+    assert backend.status_calls == 0
+
+
+def test_preview_impact_validation_failed_bad_names(monkeypatch):
+    """A non-list names argument is rejected before any backend call."""
+    server = importlib.import_module("konsol_mcp.server")
+    backend = _PreviewBackend()
+    monkeypatch.setattr(server, "_backend", lambda: backend)
+
+    data = json.loads(server.preview_impact(names="Region"))
+
+    assert data["status"] == "validation_failed"
+    assert backend.diff_calls == []
+    assert backend.status_calls == 0
+
+
+def test_preview_impact_validation_failed_missing_file(monkeypatch, tmp_path):
+    """A missing/unreadable bundle path returns validation_failed, never raises."""
+    server = importlib.import_module("konsol_mcp.server")
+    backend = _PreviewBackend()
+    monkeypatch.setattr(server, "_backend", lambda: backend)
+
+    data = json.loads(server.preview_impact(bundle_path=str(tmp_path / "nope.json")))
+
+    assert data["status"] == "validation_failed"
+    assert data["warnings"]
+    assert backend.diff_calls == []
+    assert backend.status_calls == 0
+
+
+def test_preview_impact_validation_failed_unparseable_file(monkeypatch, tmp_path):
+    """An unparseable bundle file returns validation_failed, never raises."""
+    server = importlib.import_module("konsol_mcp.server")
+    backend = _PreviewBackend()
+    monkeypatch.setattr(server, "_backend", lambda: backend)
+    path = tmp_path / "bad.json"
+    path.write_text("[1, 2, 3]")  # a list is not a config object
+
+    data = json.loads(server.preview_impact(bundle_path=str(path)))
+
+    assert data["status"] == "validation_failed"
+    assert backend.diff_calls == []
+    assert backend.status_calls == 0
+
+
+def test_preview_impact_bundle_path_is_read_only(monkeypatch, tmp_path):
+    """bundle_path path: diff flattened into affected_objects, status reflected, no mutation."""
+    server = importlib.import_module("konsol_mcp.server")
+    backend = _PreviewBackend()
+    monkeypatch.setattr(server, "_backend", lambda: backend)
+    path = _write_bundle(tmp_path)
+
+    data = json.loads(server.preview_impact(bundle_path=str(path)))
+
+    assert set(data) == ENVELOPE_KEYS
+    assert data["status"] == "dry_run"
+    # composed both read-only primitives, exactly once each
+    assert len(backend.diff_calls) == 1
+    assert backend.status_calls == 1
+    # would-be-touched objects flattened from the diff
+    keys = {obj["key"] for obj in data["affected_objects"]}
+    assert {"Region", "Entity"} <= keys
+    # schema status reflected in the impact summary (8 published)
+    assert "8" in data["impact_summary"]
+    # limitation about missing transitive lineage noted in warnings
+    assert any("lineage" in w.lower() or "blast" in w.lower() for w in data["warnings"])
+    assert data["next_steps"]
+
+
+def test_preview_impact_names_only(monkeypatch):
+    """names-only path: affected_objects built from the names, schema status fetched."""
+    server = importlib.import_module("konsol_mcp.server")
+    backend = _PreviewBackend()
+    monkeypatch.setattr(server, "_backend", lambda: backend)
+
+    data = json.loads(server.preview_impact(names=["Region", "GrossMargin"]))
+
+    assert data["status"] == "dry_run"
+    # no bundle => no diff_config call, but schema status still consulted
+    assert backend.diff_calls == []
+    assert backend.status_calls == 1
+    keys = {obj["key"] for obj in data["affected_objects"]}
+    assert {"Region", "GrossMargin"} <= keys
+    assert data["warnings"]
+    assert data["next_steps"]
     assert data["warnings"]
