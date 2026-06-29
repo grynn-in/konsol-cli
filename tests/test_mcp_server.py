@@ -455,4 +455,151 @@ def test_provision_and_test_connector_failed_writeback_warns(monkeypatch):
     assert data["status"] == "error"
     assert backend.provision_calls == ["CONN-00001"]
     assert backend.test_calls == ["CONN-00001"]
+
+
+# --- M6: onboard_new_entity composite --------------------------------------
+
+
+class _OnboardBackend:
+    """Fake backend recording connector/dimension upserts for M6 tests."""
+
+    def __init__(self):
+        self.connectors = []  # list of upserted connector specs
+        self.dimensions = []  # list of (spec, publish) tuples
+
+    def upsert_connector(self, spec):
+        self.connectors.append(spec)
+        return {"name": spec.get("connector_name", "CONN-NEW"), **spec}
+
+    def upsert_dimension(self, spec, publish=False):
+        self.dimensions.append((spec, publish))
+        return {"name": spec.get("dimension_name", "DIM-NEW"), **spec}
+
+
+def _entity_spec(**overrides):
+    spec = {
+        "entity": "JPMF",
+        "connector": {"connector_name": "JPMF D365", "erp_source": "d365"},
+        "dimension": {"dimension_name": "Entity", "source_columns": ["dataareaid"]},
+    }
+    spec.update(overrides)
+    return spec
+
+
+def test_onboard_new_entity_validation_failed_not_dict(monkeypatch):
+    """A non-dict spec is rejected before any backend call."""
+    server = importlib.import_module("konsol_mcp.server")
+    backend = _OnboardBackend()
+    monkeypatch.setattr(server, "_backend", lambda: backend)
+
+    data = json.loads(server.onboard_new_entity("not-a-dict"))
+
+    assert set(data) == ENVELOPE_KEYS
+    assert data["status"] == "validation_failed"
+    assert data["warnings"]
+    assert backend.connectors == []
+    assert backend.dimensions == []
+
+
+def test_onboard_new_entity_validation_failed_missing_entity(monkeypatch):
+    """A spec without an entity name is rejected."""
+    server = importlib.import_module("konsol_mcp.server")
+    backend = _OnboardBackend()
+    monkeypatch.setattr(server, "_backend", lambda: backend)
+
+    data = json.loads(
+        server.onboard_new_entity({"connector": {"connector_name": "X"}})
+    )
+
+    assert data["status"] == "validation_failed"
+    assert backend.connectors == []
+    assert backend.dimensions == []
+
+
+def test_onboard_new_entity_validation_failed_no_objects(monkeypatch):
+    """An entity with neither a connector nor a dimension is rejected."""
+    server = importlib.import_module("konsol_mcp.server")
+    backend = _OnboardBackend()
+    monkeypatch.setattr(server, "_backend", lambda: backend)
+
+    data = json.loads(server.onboard_new_entity({"entity": "JPMF"}))
+
+    assert data["status"] == "validation_failed"
+    assert backend.connectors == []
+    assert backend.dimensions == []
+
+
+def test_onboard_new_entity_dry_run_previews(monkeypatch):
+    """dry_run (default) previews every object without upserting."""
+    server = importlib.import_module("konsol_mcp.server")
+    backend = _OnboardBackend()
+    monkeypatch.setattr(server, "_backend", lambda: backend)
+
+    data = json.loads(server.onboard_new_entity(_entity_spec()))
+
+    assert set(data) == ENVELOPE_KEYS
+    assert data["status"] == "dry_run"
+    assert backend.connectors == []
+    assert backend.dimensions == []
+    assert data["next_steps"]
+    # one entry for the connector + one for the dimension
+    kinds = [obj["kind"] for obj in data["affected_objects"]]
+    assert kinds.count("connector") == 1
+    assert kinds.count("dimension") == 1
+
+
+def test_onboard_new_entity_dry_run_multiple_dimensions(monkeypatch):
+    """A ``dimensions`` list previews one entry per dimension."""
+    server = importlib.import_module("konsol_mcp.server")
+    backend = _OnboardBackend()
+    monkeypatch.setattr(server, "_backend", lambda: backend)
+
+    spec = {
+        "entity": "JPMF",
+        "dimensions": [
+            {"dimension_name": "Entity"},
+            {"dimension_name": "Account"},
+        ],
+    }
+    data = json.loads(server.onboard_new_entity(spec))
+
+    assert data["status"] == "dry_run"
+    dim_keys = [o["key"] for o in data["affected_objects"] if o["kind"] == "dimension"]
+    assert dim_keys == ["Entity", "Account"]
+    assert backend.dimensions == []
+
+
+def test_onboard_new_entity_apply_upserts_each_once(monkeypatch):
+    """dry_run=False upserts each object once and does not publish by default."""
+    server = importlib.import_module("konsol_mcp.server")
+    backend = _OnboardBackend()
+    monkeypatch.setattr(server, "_backend", lambda: backend)
+
+    data = json.loads(server.onboard_new_entity(_entity_spec(), dry_run=False))
+
+    assert data["status"] == "success"
+    assert len(backend.connectors) == 1
+    assert len(backend.dimensions) == 1
+    # publish defaults to False
+    assert backend.dimensions[0][1] is False
+    assert data["affected_objects"]
+    assert data["next_steps"]
+    # no publish-gate warning when not publishing
+    assert not data["warnings"]
+
+
+def test_onboard_new_entity_apply_publish_propagates(monkeypatch):
+    """spec.publish=True propagates to dimension upserts + adds the gate warning."""
+    server = importlib.import_module("konsol_mcp.server")
+    backend = _OnboardBackend()
+    monkeypatch.setattr(server, "_backend", lambda: backend)
+
+    data = json.loads(
+        server.onboard_new_entity(_entity_spec(publish=True), dry_run=False)
+    )
+
+    assert data["status"] == "success"
+    assert backend.dimensions[0][1] is True
+    assert data["warnings"]
+    assert any("publish gate" in w.lower() for w in data["warnings"])
     assert data["warnings"]

@@ -689,5 +689,163 @@ def provision_and_test_connector(name: str, dry_run: bool = True) -> str:
         )
     )
 
+# --- M6: onboard_new_entity composite ---------------------------------------
+
+# Keys that may carry the entity's name in an onboarding spec, in priority order.
+_ENTITY_NAME_KEYS = ("entity", "entity_name", "name")
+
+
+def _entity_name(spec: dict[str, Any]) -> str | None:
+    """Best-effort extraction of the entity name from an onboarding spec."""
+    for key in _ENTITY_NAME_KEYS:
+        value = spec.get(key)
+        if value:
+            return str(value)
+    return None
+
+
+def _entity_dimension_specs(spec: dict[str, Any]) -> list[dict[str, Any]]:
+    """Collect dimension specs from a spec's ``dimension`` and/or ``dimensions``."""
+    dims: list[dict[str, Any]] = []
+    single = spec.get("dimension")
+    if isinstance(single, dict):
+        dims.append(single)
+    listed = spec.get("dimensions")
+    if isinstance(listed, list):
+        dims.extend(item for item in listed if isinstance(item, dict))
+    return dims
+
+
+def _entity_plan(spec: dict[str, Any]) -> list[dict[str, Any]]:
+    """Ordered list of objects to upsert for an entity (connector then dimensions).
+
+    Each entry is ``{"kind": ..., "spec": ..., "key": ...}`` where ``kind`` is
+    ``"connector"`` or ``"dimension"`` and ``key`` is the best-effort doc name.
+    """
+    plan: list[dict[str, Any]] = []
+    connector = spec.get("connector")
+    if isinstance(connector, dict):
+        plan.append(
+            {
+                "kind": "connector",
+                "spec": connector,
+                "key": _doc_name(connector) or "new connector",
+            }
+        )
+    for dim in _entity_dimension_specs(spec):
+        plan.append(
+            {
+                "kind": "dimension",
+                "spec": dim,
+                "key": _doc_name(dim) or "new dimension",
+            }
+        )
+    return plan
+
+
+@mcp.tool()
+def onboard_new_entity(spec: dict[str, Any], dry_run: bool = True) -> str:
+    """Onboard a new entity: ensure its connector and dimension(s) (composite).
+
+    Composes the ``upsert_connector`` / ``upsert_dimension`` backend primitives
+    to stand up everything a new entity needs in one call. Nothing is published
+    unless ``spec["publish"]`` is truthy, and even then mutations are routed
+    through the governed upsert primitives — this never bypasses the publish
+    gate.
+
+    The ``spec`` is a dict describing the entity:
+
+    - ``entity`` (required): the entity name.
+    - ``connector`` (optional): a Connector spec dict to upsert.
+    - ``dimension`` / ``dimensions`` (optional): one dict or a list of
+      Dimension spec dicts to upsert.
+    - ``publish`` (optional): when truthy, publish the upserted dimension(s).
+
+    At least one of ``connector`` / ``dimension`` / ``dimensions`` is required.
+
+    Args:
+        spec: The entity onboarding spec described above.
+        dry_run: When True (default) only preview the objects that would be
+            created/updated — no upsert call.
+
+    Returns:
+        The serialized response envelope. ``validation_failed`` when ``spec``
+        is not a dict, has no entity name, or describes no objects (never
+        raises); ``dry_run`` for a preview; ``success`` after upserting.
+    """
+    if not isinstance(spec, dict):
+        return _json(
+            format_mcp_response(
+                "validation_failed",
+                "spec must be a mapping describing the entity.",
+                warnings=[f"Expected a dict for spec, got {type(spec).__name__}."],
+            )
+        )
+
+    entity = _entity_name(spec)
+    if not entity:
+        return _json(
+            format_mcp_response(
+                "validation_failed",
+                "spec is missing an entity name.",
+                warnings=["spec must include a non-empty 'entity' name."],
+            )
+        )
+
+    plan = _entity_plan(spec)
+    if not plan:
+        return _json(
+            format_mcp_response(
+                "validation_failed",
+                f"No objects to onboard for entity {entity}.",
+                warnings=[
+                    "spec must describe at least one of 'connector', "
+                    "'dimension', or 'dimensions'."
+                ],
+            )
+        )
+
+    publish = bool(spec.get("publish"))
+    affected = [{"kind": item["kind"], "key": item["key"]} for item in plan]
+    impact = (
+        f"{entity}: "
+        + ", ".join(f"{item['kind']} {item['key']}" for item in plan)
+    )
+
+    if dry_run:
+        return _json(
+            format_mcp_response(
+                "dry_run",
+                f"Would onboard {len(plan)} object(s) for entity {entity}.",
+                affected_objects=affected,
+                impact_summary=impact,
+                next_steps=["re-run with dry_run=False to create"],
+            )
+        )
+
+    backend = _backend()
+    results: dict[str, list[Any]] = {"connectors": [], "dimensions": []}
+    for item in plan:
+        if item["kind"] == "connector":
+            results["connectors"].append(backend.upsert_connector(item["spec"]))
+        else:  # dimension
+            results["dimensions"].append(
+                backend.upsert_dimension(item["spec"], publish=publish)
+            )
+
+    warnings = [_PUBLISH_GATE_NOTE] if publish else None
+    return _json(
+        format_mcp_response(
+            "success",
+            f"Onboarded {len(plan)} object(s) for entity {entity}.",
+            affected_objects=affected,
+            diff=results,
+            impact_summary=impact,
+            warnings=warnings,
+            next_steps=["publish_model_changes to go live"],
+        )
+    )
+
+
 def main() -> None:
     mcp.run()
