@@ -24,7 +24,7 @@ def _print_registry(registry: dict) -> None:
     labels = {
         "dimensions": "Dimension",
         "measures": "Measure",
-        "fact_tables": "Fact Table",
+        "fact_tables": "Dataset",
     }
     for key, label in labels.items():
         counts = registry.get(key)

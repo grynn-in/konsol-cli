@@ -1,4 +1,4 @@
-"""Fact table commands."""
+"""Dataset commands."""
 from __future__ import annotations
 
 import json
@@ -10,7 +10,7 @@ from rich.json import JSON
 from konsol_cli.commands.common import get_backend, status_option
 from konsol_cli.output import print_rows
 
-app = typer.Typer(help="Manage EPM fact tables.")
+app = typer.Typer(help="Manage EPM datasets.")
 console = Console()
 
 
@@ -19,11 +19,11 @@ def list_fact_tables(
     ctx: typer.Context,
     status: str | None = status_option(),
 ) -> None:
-    """List fact tables from the konsol site."""
+    """List datasets from the konsol site."""
     rows = get_backend(ctx).list_fact_tables(status=status)
     print_rows(
         console,
-        "Fact Tables",
+        "Datasets",
         rows,
         [
             ("Name", "fact_name"),
@@ -39,9 +39,9 @@ def list_fact_tables(
 @app.command("show")
 def show_fact_table(
     ctx: typer.Context,
-    name: str = typer.Argument(help="Fact table name, e.g. headcount."),
+    name: str = typer.Argument(help="Dataset name, e.g. headcount."),
 ) -> None:
-    """Show a single fact table."""
+    """Show a single dataset."""
     row = get_backend(ctx).get_fact_table(name)
     console.print(JSON(json.dumps(row)))
 
@@ -49,7 +49,7 @@ def show_fact_table(
 @app.command("create")
 def create_fact_table(
     ctx: typer.Context,
-    name: str = typer.Argument(help="Fact table name, e.g. headcount."),
+    name: str = typer.Argument(help="Dataset name, e.g. headcount."),
     label: str = typer.Option(..., "--label", help="Human-readable label."),
     source_type: str = typer.Option(
         ...,
@@ -95,7 +95,7 @@ def create_fact_table(
     result = get_backend(ctx).upsert_fact_table(spec, publish=publish)
     action = "created" if result.get("created") else "updated"
     console.print(
-        f"[green]{action.title()}[/green] fact table [bold]{name}[/bold] "
+        f"[green]{action.title()}[/green] dataset [bold]{name}[/bold] "
         f"(status={result['fact_table']['status']})"
     )
     if result.get("published"):
@@ -105,12 +105,12 @@ def create_fact_table(
 @app.command("publish")
 def publish_fact_table(
     ctx: typer.Context,
-    name: str = typer.Argument(help="Fact table name to publish."),
+    name: str = typer.Argument(help="Dataset name to publish."),
 ) -> None:
-    """Publish a fact table and trigger schema apply + governed rebuild."""
+    """Publish a dataset and trigger schema apply + governed rebuild."""
     result = get_backend(ctx).publish_fact_table(name)
     console.print(
-        f"[green]Published[/green] fact table [bold]{name}[/bold] "
+        f"[green]Published[/green] dataset [bold]{name}[/bold] "
         f"(status={result['fact_table']['status']})"
     )
     console.print("[yellow]Schema apply + build request triggered.[/yellow]")
@@ -119,12 +119,12 @@ def publish_fact_table(
 @app.command("unpublish")
 def unpublish_fact_table(
     ctx: typer.Context,
-    name: str = typer.Argument(help="Fact table name to unpublish."),
+    name: str = typer.Argument(help="Dataset name to unpublish."),
 ) -> None:
-    """Unpublish a fact table (Inactive) and trigger schema apply + rebuild."""
+    """Unpublish a dataset (Inactive) and trigger schema apply + rebuild."""
     result = get_backend(ctx).unpublish_fact_table(name)
     console.print(
-        f"[green]Unpublished[/green] fact table [bold]{name}[/bold] "
+        f"[green]Unpublished[/green] dataset [bold]{name}[/bold] "
         f"(status={result['fact_table']['status']})"
     )
     console.print("[yellow]Schema apply + build request triggered.[/yellow]")

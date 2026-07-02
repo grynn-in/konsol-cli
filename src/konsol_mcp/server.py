@@ -178,39 +178,39 @@ def unpublish_measure(name: str) -> str:
 
 @mcp.tool()
 def list_fact_tables(status: str | None = None) -> str:
-    """List Fact Table docs. Optional status: Draft, Published, or Inactive."""
+    """List Dataset docs. Optional status: Draft, Published, or Inactive."""
     data = _backend().list_fact_tables(status=status)
-    return _read_list(data, f"Listed {len(data)} fact table(s).")
+    return _read_list(data, f"Listed {len(data)} dataset(s).")
 
 
 @mcp.tool()
 def get_fact_table(name: str) -> str:
-    """Get a single Fact Table doc by fact_name."""
-    return _read_list(_backend().get_fact_table(name), f"Fetched fact table {name}.")
+    """Get a single Dataset doc by fact_name."""
+    return _read_list(_backend().get_fact_table(name), f"Fetched dataset {name}.")
 
 
 @mcp.tool()
 def upsert_fact_table(spec: dict[str, Any], publish: bool = False) -> str:
-    """Create or update a Fact Table doc."""
+    """Create or update a Dataset doc."""
     result = _backend().upsert_fact_table(spec, publish=publish)
     warnings = [_PUBLISH_GATE_NOTE] if publish else None
     return _mutated(
-        _doc_name(result, spec), "Upserted fact table.", result, warnings=warnings
+        _doc_name(result, spec), "Upserted dataset.", result, warnings=warnings
     )
 
 
 @mcp.tool()
 def publish_fact_table(name: str) -> str:
-    """Publish a Fact Table doc and request a governed rebuild."""
+    """Publish a Dataset doc and request a governed rebuild."""
     result = _backend().publish_fact_table(name)
-    return _mutated(name, f"Published fact table {name}.", result, warnings=[_PUBLISH_GATE_NOTE])
+    return _mutated(name, f"Published dataset {name}.", result, warnings=[_PUBLISH_GATE_NOTE])
 
 
 @mcp.tool()
 def unpublish_fact_table(name: str) -> str:
-    """Unpublish a Fact Table doc and request a governed rebuild."""
+    """Unpublish a Dataset doc and request a governed rebuild."""
     result = _backend().unpublish_fact_table(name)
-    return _mutated(name, f"Unpublished fact table {name}.", result, warnings=[_PUBLISH_GATE_NOTE])
+    return _mutated(name, f"Unpublished dataset {name}.", result, warnings=[_PUBLISH_GATE_NOTE])
 
 
 @mcp.tool()
@@ -280,13 +280,13 @@ def get_schema_status() -> str:
 
 @mcp.tool()
 def export_config(status: str | None = None) -> str:
-    """Export dimensions, measures, fact tables, and connectors as a portable bundle."""
+    """Export dimensions, measures, datasets, and connectors as a portable bundle."""
     return _read_diff(_backend().export_config(status=status), "Exported config bundle.")
 
 
 @mcp.tool()
 def apply_config(spec: dict[str, Any], publish: bool = False, prune: bool = False) -> str:
-    """Apply a config bundle (dimensions, measures, fact tables, connectors)."""
+    """Apply a config bundle (dimensions, measures, datasets, connectors)."""
     result = _backend().apply_config(spec, publish=publish, prune=prune)
     warnings = [_PUBLISH_GATE_NOTE] if publish else None
     return _mutated(

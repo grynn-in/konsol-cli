@@ -71,7 +71,7 @@ def export_config(
     output: Path = typer.Option(..., "--output", "-o", help="YAML or JSON output path."),
     status: str | None = status_option(),
 ) -> None:
-    """Export dimensions, measures, fact tables, and connectors to a config file."""
+    """Export dimensions, measures, datasets, and connectors to a config file."""
     bundle = get_backend(ctx).export_config(status=status)
     output.parent.mkdir(parents=True, exist_ok=True)
     _write_bundle(output, bundle)
@@ -79,7 +79,7 @@ def export_config(
         f"[green]Exported[/green] "
         f"{len(bundle.get('dimensions', []))} dimensions, "
         f"{len(bundle.get('measures', []))} measures, "
-        f"{len(bundle.get('fact_tables', []))} fact tables, "
+        f"{len(bundle.get('fact_tables', []))} datasets, "
         f"{len(bundle.get('connectors', []))} connectors "
         f"to [bold]{output}[/bold]"
     )
@@ -114,7 +114,7 @@ def apply_config(
         console.print(f"[yellow]Dry run[/yellow] for [bold]{path}[/bold]")
         _print_diff_section("Dimensions", diff["dimensions"])
         _print_diff_section("Measures", diff["measures"])
-        _print_diff_section("Fact Tables", diff["fact_tables"])
+        _print_diff_section("Datasets", diff["fact_tables"])
         _print_diff_section("Connectors", diff["connectors"])
         raise typer.Exit()
 
@@ -123,7 +123,7 @@ def apply_config(
         f"[green]Applied[/green] "
         f"{len(summary.get('dimensions', []))} dimensions, "
         f"{len(summary.get('measures', []))} measures, "
-        f"{len(summary.get('fact_tables', []))} fact tables, "
+        f"{len(summary.get('fact_tables', []))} datasets, "
         f"{len(summary.get('connectors', []))} connectors"
     )
     if prune:
@@ -132,7 +132,7 @@ def apply_config(
             "[yellow]Pruned[/yellow] "
             f"{len(pruned.get('dimensions', []))} dimensions, "
             f"{len(pruned.get('measures', []))} measures, "
-            f"{len(pruned.get('fact_tables', []))} fact tables, "
+            f"{len(pruned.get('fact_tables', []))} datasets, "
             f"{len(pruned.get('connectors', []))} connectors"
         )
     if publish:
@@ -157,5 +157,5 @@ def diff_config(
     console.print(f"Diff for [bold]{path}[/bold]")
     _print_diff_section("Dimensions", diff["dimensions"])
     _print_diff_section("Measures", diff["measures"])
-    _print_diff_section("Fact Tables", diff["fact_tables"])
+    _print_diff_section("Datasets", diff["fact_tables"])
     _print_diff_section("Connectors", diff["connectors"])
