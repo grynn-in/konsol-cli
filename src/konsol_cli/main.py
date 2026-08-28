@@ -45,8 +45,8 @@ def main(
         help="Connection mode: bench (local Docker) or api (remote HTTP).",
         envvar="KONSOL_BACKEND",
     ),
-    site: str = typer.Option(
-        "konsolidat.local",
+    site: str | None = typer.Option(
+        None,
         "--site",
         help="Frappe site name (also sent as Host header for api backend).",
         envvar="KONSOL_SITE",
