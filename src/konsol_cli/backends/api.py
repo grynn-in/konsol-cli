@@ -50,10 +50,10 @@ class ApiBackend:
         )
 
     def publish_dimension(self, name: str) -> dict[str, Any]:
-        return self._call("konsol.cli_api.publish_dimension_api", name=name)
+        return self._call("konsol.cli_api.publish_dimension_api", use_post=True, name=name)
 
     def unpublish_dimension(self, name: str) -> dict[str, Any]:
-        return self._call("konsol.cli_api.unpublish_dimension_api", name=name)
+        return self._call("konsol.cli_api.unpublish_dimension_api", use_post=True, name=name)
 
     def get_measure(self, name: str) -> dict[str, Any]:
         return self._call("konsol.cli_api.get_measure_api", name=name)
@@ -69,10 +69,10 @@ class ApiBackend:
         )
 
     def publish_measure(self, name: str) -> dict[str, Any]:
-        return self._call("konsol.cli_api.publish_measure_api", name=name)
+        return self._call("konsol.cli_api.publish_measure_api", use_post=True, name=name)
 
     def unpublish_measure(self, name: str) -> dict[str, Any]:
-        return self._call("konsol.cli_api.unpublish_measure_api", name=name)
+        return self._call("konsol.cli_api.unpublish_measure_api", use_post=True, name=name)
 
     def apply_schema(self, run_dbt: bool = False) -> dict[str, Any]:
         return self._call(
@@ -101,10 +101,10 @@ class ApiBackend:
         )
 
     def publish_fact_table(self, name: str) -> dict[str, Any]:
-        return self._call("konsol.cli_api.publish_fact_table_api", name=name)
+        return self._call("konsol.cli_api.publish_fact_table_api", use_post=True, name=name)
 
     def unpublish_fact_table(self, name: str) -> dict[str, Any]:
-        return self._call("konsol.cli_api.unpublish_fact_table_api", name=name)
+        return self._call("konsol.cli_api.unpublish_fact_table_api", use_post=True, name=name)
 
     def list_fact_tables(self, status: str | None = None) -> list[dict[str, Any]]:
         return self._call("konsol.cli_api.list_fact_tables_api", status=status)
@@ -150,7 +150,7 @@ class ApiBackend:
         )
 
     def delete_connector(self, name: str) -> dict[str, Any]:
-        return self._call("konsol.cli_api.delete_connector_api", name=name)
+        return self._call("konsol.cli_api.delete_connector_api", use_post=True, name=name)
 
     def test_connector_writeback(self, name: str) -> dict[str, Any]:
         return self._call("konsol.cli_api.test_connector_writeback_api", name=name)
