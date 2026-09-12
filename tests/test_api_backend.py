@@ -214,3 +214,39 @@ def test_apply_config_posts_json():
     assert captured["url"].endswith("konsol.cli_api.apply_config_api")
     assert captured["json"]["spec"] == spec
     assert captured["json"]["publish"] == 1
+
+# Frappe rolls a GET request back at the end, so a write sent as GET silently
+# vanished once konsol stopped committing mid-request (grynn-in/konsol#133). konsol
+# makes these endpoints POST-only; the CLI and the MCP server must POST them.
+WRITE_CALLS = [
+    ("publish_dimension", "konsol.cli_api.publish_dimension_api"),
+    ("unpublish_dimension", "konsol.cli_api.unpublish_dimension_api"),
+    ("publish_measure", "konsol.cli_api.publish_measure_api"),
+    ("unpublish_measure", "konsol.cli_api.unpublish_measure_api"),
+    ("publish_fact_table", "konsol.cli_api.publish_fact_table_api"),
+    ("unpublish_fact_table", "konsol.cli_api.unpublish_fact_table_api"),
+    ("delete_connector", "konsol.cli_api.delete_connector_api"),
+]
+
+
+@pytest.mark.parametrize("method_name,endpoint", WRITE_CALLS)
+def test_writes_are_sent_as_post_never_get(method_name, endpoint):
+    backend = ApiBackend(_settings())
+    response = MagicMock()
+    response.status_code = 200
+    response.json.return_value = {"message": {"ok": True}}
+    posted: dict = {}
+
+    def fake_post(url, json=None, timeout=None):
+        posted["url"] = url
+        posted["json"] = json
+        return response
+
+    def fake_get(*args, **kwargs):
+        raise AssertionError(f"{method_name} was sent as GET, which Frappe rolls back")
+
+    backend._session.post = fake_post
+    backend._session.get = fake_get
+    getattr(backend, method_name)("X1")
+    assert posted["url"].endswith(f"/api/method/{endpoint}")
+    assert posted["json"] == {"name": "X1"}
