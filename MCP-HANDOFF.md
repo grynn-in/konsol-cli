@@ -1,5 +1,7 @@
 # konsol-cli MCP composite tools — durable handoff (read me first)
 
+> **5 Nov 2026 (v0.11.0):** konsol keeps five endpoints for this client (konsol#379). konsol-cli now has only `config export/diff/apply` and `schema apply/status`; the MCP server keeps `export_config`, `diff_config`, `apply_config`, `apply_schema`, `get_schema_status`, `apply_model_from_gitops` and `preview_impact`. The other tools and composites below (M4–M6, connector and Airbyte tools) were removed. Dimension, measure, dataset and connector work is done in the Frappe Desk or with `frappectl`.
+
 You are a fresh agent. This file + `MCP-PRDS.md` are the source of truth. Do **exactly one PRD** (or one review/fix pass), then stop. No prior memory is assumed.
 
 ## Goal

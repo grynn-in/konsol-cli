@@ -28,7 +28,7 @@ def test_bench_backend_requires_compose_file():
         BenchBackend(_settings(compose_file=None))
 
 
-def test_list_dimensions_calls_bench_execute(monkeypatch):
+def test_export_config_builds_bench_execute_command(monkeypatch):
     backend = BenchBackend(_settings())
     captured: dict = {}
 
@@ -36,21 +36,21 @@ def test_list_dimensions_calls_bench_execute(monkeypatch):
         captured["command"] = command
         result = MagicMock()
         result.returncode = 0
-        result.stdout = json.dumps([{"dimension_name": "dim_cost_center"}])
+        result.stdout = json.dumps({"dimensions": [{"dimension_name": "dim_cost_center"}]})
         result.stderr = ""
         return result
 
     monkeypatch.setattr("konsol_cli.backends.bench.subprocess.run", fake_run)
 
-    rows = backend.list_dimensions(status="Published")
+    bundle = backend.export_config(status="Published")
 
-    assert rows == [{"dimension_name": "dim_cost_center"}]
+    assert bundle == {"dimensions": [{"dimension_name": "dim_cost_center"}]}
     command = captured["command"]
     assert command[0:3] == ["docker", "compose", "-f"]
     assert command[3] == "/tmp/docker-compose.yml"
     assert "exec" in command
     assert "frappe_backend" in command
-    assert "konsol.cli_api.list_dimensions_api" in command
+    assert "konsol.cli_api.export_config_api" in command
     assert command[-2:] == ["--kwargs", json.dumps({"status": "Published"})]
 
 
@@ -60,15 +60,15 @@ def test_parse_output_supports_python_literal(monkeypatch):
     def fake_run(command, check, capture_output, text):
         result = MagicMock()
         result.returncode = 0
-        result.stdout = "[{'measure_name': 'period_net_amount'}]"
+        result.stdout = "{'registry': {'measures': {'Published': 1}}}"
         result.stderr = ""
         return result
 
     monkeypatch.setattr("konsol_cli.backends.bench.subprocess.run", fake_run)
 
-    rows = backend.list_measures()
+    status = backend.get_schema_status()
 
-    assert rows == [{"measure_name": "period_net_amount"}]
+    assert status == {"registry": {"measures": {"Published": 1}}}
 
 
 def test_bench_execute_failure_raises(monkeypatch):
@@ -84,7 +84,7 @@ def test_bench_execute_failure_raises(monkeypatch):
     monkeypatch.setattr("konsol_cli.backends.bench.subprocess.run", fake_run)
 
     with pytest.raises(BackendError, match="site not found"):
-        backend.list_dimensions()
+        backend.get_schema_status()
 
 
 def test_serialize_bench_kwargs_uses_python_literals():
@@ -94,58 +94,6 @@ def test_serialize_bench_kwargs_uses_python_literals():
     assert payload == (
         '{"publish": False, "spec": {"in_budget": True, "label": None}}'
     )
-
-
-def test_upsert_dimension_passes_spec_and_publish(monkeypatch):
-    backend = BenchBackend(_settings())
-    captured: dict = {}
-
-    def fake_run(command, check, capture_output, text):
-        captured["command"] = command
-        result = MagicMock()
-        result.returncode = 0
-        result.stdout = json.dumps({"created": True, "published": False, "dimension": {}})
-        result.stderr = ""
-        return result
-
-    monkeypatch.setattr("konsol_cli.backends.bench.subprocess.run", fake_run)
-
-    spec = {
-        "dimension_name": "dim_project",
-        "source_column": "Project",
-        "label": "Project",
-    }
-    backend.upsert_dimension(spec, publish=False)
-
-    kwargs_text = captured["command"][-1]
-    assert '"publish": False' in kwargs_text
-    assert "dim_project" in kwargs_text
-    assert "konsol.cli_api.upsert_dimension_api" in captured["command"]
-
-
-def test_upsert_measure_calls_bench_execute(monkeypatch):
-    backend = BenchBackend(_settings())
-    captured: dict = {}
-
-    def fake_run(command, check, capture_output, text):
-        captured["command"] = command
-        result = MagicMock()
-        result.returncode = 0
-        result.stdout = json.dumps({"created": True, "published": False, "measure": {}})
-        result.stderr = ""
-        return result
-
-    monkeypatch.setattr("konsol_cli.backends.bench.subprocess.run", fake_run)
-
-    backend.upsert_measure(
-        {
-            "measure_name": "period_headcount",
-            "expression": "sum(headcount)",
-            "label": "Headcount",
-        }
-    )
-
-    assert "konsol.cli_api.upsert_measure_api" in captured["command"]
 
 
 def test_apply_schema_calls_bench_execute(monkeypatch):
@@ -184,26 +132,6 @@ def test_get_schema_status_calls_bench_execute(monkeypatch):
     status = backend.get_schema_status()
 
     assert status["pending_builds"] == []
-
-
-def test_list_fact_tables_calls_bench_execute(monkeypatch):
-    backend = BenchBackend(_settings())
-    captured: dict = {}
-
-    def fake_run(command, check, capture_output, text):
-        captured["command"] = command
-        result = MagicMock()
-        result.returncode = 0
-        result.stdout = json.dumps([{"fact_name": "headcount"}])
-        result.stderr = ""
-        return result
-
-    monkeypatch.setattr("konsol_cli.backends.bench.subprocess.run", fake_run)
-
-    rows = backend.list_fact_tables()
-
-    assert rows == [{"fact_name": "headcount"}]
-    assert "konsol.cli_api.list_fact_tables_api" in captured["command"]
 
 
 def test_export_config_calls_bench_execute(monkeypatch):

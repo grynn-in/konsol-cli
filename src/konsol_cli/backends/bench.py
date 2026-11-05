@@ -19,74 +19,11 @@ class BenchBackend:
                 "Pass --compose-file or set KONSOL_COMPOSE_FILE."
             )
 
-    def list_dimensions(self, status: str | None = None) -> list[dict[str, Any]]:
-        return self._call("konsol.cli_api.list_dimensions_api", status=status)
-
-    def get_dimension(self, name: str) -> dict[str, Any]:
-        return self._call("konsol.cli_api.get_dimension_api", name=name)
-
-    def upsert_dimension(
-        self, spec: dict[str, Any], publish: bool = False
-    ) -> dict[str, Any]:
-        return self._call(
-            "konsol.cli_api.upsert_dimension_api",
-            spec=spec,
-            publish=publish,
-        )
-
-    def publish_dimension(self, name: str) -> dict[str, Any]:
-        return self._call("konsol.cli_api.publish_dimension_api", name=name)
-
-    def unpublish_dimension(self, name: str) -> dict[str, Any]:
-        return self._call("konsol.cli_api.unpublish_dimension_api", name=name)
-
-    def get_measure(self, name: str) -> dict[str, Any]:
-        return self._call("konsol.cli_api.get_measure_api", name=name)
-
-    def upsert_measure(
-        self, spec: dict[str, Any], publish: bool = False
-    ) -> dict[str, Any]:
-        return self._call(
-            "konsol.cli_api.upsert_measure_api",
-            spec=spec,
-            publish=publish,
-        )
-
-    def publish_measure(self, name: str) -> dict[str, Any]:
-        return self._call("konsol.cli_api.publish_measure_api", name=name)
-
-    def unpublish_measure(self, name: str) -> dict[str, Any]:
-        return self._call("konsol.cli_api.unpublish_measure_api", name=name)
-
     def apply_schema(self, run_dbt: bool = False) -> dict[str, Any]:
         return self._call("konsol.cli_api.apply_schema_api", run_dbt=run_dbt)
 
     def get_schema_status(self) -> dict[str, Any]:
         return self._call("konsol.cli_api.get_schema_status_api")
-
-    def list_measures(self, status: str | None = None) -> list[dict[str, Any]]:
-        return self._call("konsol.cli_api.list_measures_api", status=status)
-
-    def get_fact_table(self, name: str) -> dict[str, Any]:
-        return self._call("konsol.cli_api.get_fact_table_api", name=name)
-
-    def upsert_fact_table(
-        self, spec: dict[str, Any], publish: bool = False
-    ) -> dict[str, Any]:
-        return self._call(
-            "konsol.cli_api.upsert_fact_table_api",
-            spec=spec,
-            publish=publish,
-        )
-
-    def publish_fact_table(self, name: str) -> dict[str, Any]:
-        return self._call("konsol.cli_api.publish_fact_table_api", name=name)
-
-    def unpublish_fact_table(self, name: str) -> dict[str, Any]:
-        return self._call("konsol.cli_api.unpublish_fact_table_api", name=name)
-
-    def list_fact_tables(self, status: str | None = None) -> list[dict[str, Any]]:
-        return self._call("konsol.cli_api.list_fact_tables_api", status=status)
 
     def export_config(self, status: str | None = None) -> dict[str, Any]:
         return self._call("konsol.cli_api.export_config_api", status=status)
@@ -109,33 +46,6 @@ class BenchBackend:
             spec=spec,
             status=status,
         )
-
-    def list_connectors(self, enabled: bool | None = None) -> list[dict[str, Any]]:
-        kwargs: dict[str, Any] = {}
-        if enabled is not None:
-            kwargs["enabled"] = enabled
-        return self._call("konsol.cli_api.list_connectors_api", **kwargs)
-
-    def get_connector(self, name: str) -> dict[str, Any]:
-        return self._call("konsol.cli_api.get_connector_api", name=name)
-
-    def upsert_connector(self, spec: dict[str, Any]) -> dict[str, Any]:
-        return self._call("konsol.cli_api.upsert_connector_api", spec=spec)
-
-    def delete_connector(self, name: str) -> dict[str, Any]:
-        return self._call("konsol.cli_api.delete_connector_api", name=name)
-
-    def test_connector_writeback(self, name: str) -> dict[str, Any]:
-        return self._call("konsol.cli_api.test_connector_writeback_api", name=name)
-
-    def provision_connector_airbyte(self, name: str) -> dict[str, Any]:
-        return self._call(
-            "konsol.cli_api.provision_connector_airbyte_api",
-            name=name,
-        )
-
-    def list_erp_sources(self) -> dict[str, Any]:
-        return self._call("konsol.cli_api.list_erp_sources_api")
 
     @staticmethod
     def _serialize_bench_kwargs(kwargs: dict[str, Any]) -> str:

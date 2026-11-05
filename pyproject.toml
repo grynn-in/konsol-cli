@@ -1,7 +1,7 @@
 [project]
 name = "konsol-cli"
-version = "0.10.0"
-description = "CLI client for configuring the konsol Frappe app"
+version = "0.11.0"
+description = "Config-as-code and schema client for the konsol Frappe app"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [

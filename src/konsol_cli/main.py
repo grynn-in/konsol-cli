@@ -5,20 +5,19 @@ import typer
 
 from konsol_cli import __version__
 from konsol_cli.backends.errors import BackendError
-from konsol_cli.commands import config, connector, dimension, fact, measure, schema, source
+from konsol_cli.commands import config, schema
 from konsol_cli.settings import Settings
 
 app = typer.Typer(
     name="konsol",
-    help="Configure konsol (Frappe EPM app). All writes go through konsol — never dbt or SQL.",
+    help=(
+        "Copy konsol configuration as code (config export/diff/apply) and apply "
+        "the schema. Edit dimensions, measures, datasets and connectors in the "
+        "Frappe Desk or with frappectl."
+    ),
     no_args_is_help=True,
 )
-app.add_typer(dimension.app, name="dimension")
-app.add_typer(measure.app, name="measure")
-app.add_typer(fact.app, name="fact")
 app.add_typer(config.app, name="config")
-app.add_typer(connector.app, name="connector")
-app.add_typer(source.app, name="source")
 app.add_typer(schema.app, name="schema")
 
 
