@@ -1,8 +1,25 @@
 # konsol-cli
 
-Command-line client for configuring the [konsol](https://github.com/grynn-in/konsol) Frappe app.
+Config-as-code and schema client for the [konsol](https://github.com/grynn-in/konsol) Frappe app.
 
-All configuration goes through konsol — never dbt or ClickHouse directly.
+konsol-cli does two things:
+
+- **config**: export a site's configuration (dimensions, measures, datasets, connectors) to a YAML or JSON file, diff a file against a site, and apply a file to a site.
+- **schema**: apply the published configuration to the warehouse, and show its status.
+
+To create, edit, publish or delete one dimension, measure, dataset or connector, use the Frappe Desk or the generic Frappe client `frappectl`. konsol-cli no longer has commands for that work (konsol#379).
+
+konsol-cli calls these five konsol endpoints, and no others:
+
+| Endpoint | HTTP | Used by |
+|----------|------|---------|
+| `konsol.cli_api.export_config_api` | GET | `config export` |
+| `konsol.cli_api.diff_config_api` | POST | `config diff`, `config apply --dry-run` |
+| `konsol.cli_api.apply_config_api` | POST | `config apply` |
+| `konsol.cli_api.apply_schema_api` | POST | `schema apply` |
+| `konsol.cli_api.get_schema_status_api` | GET | `schema status` |
+
+Writes are POST because Frappe rolls back a GET request. `diff_config_api` writes nothing, but the bundle goes in a POST body because it is too large for a query string.
 
 ## Install
 
@@ -26,7 +43,7 @@ pip install -e ".[mcp]"
 Talks to konsol by running `bench execute` inside your Docker stack.
 
 ```bash
-konsol dimension list --compose-file ../repo/docker-compose.yml
+konsol --compose-file ../repo/docker-compose.yml schema status
 ```
 
 ### 2. Remote HTTP API
@@ -47,7 +64,7 @@ konsol --backend api \
   --site konsolidat.local \
   --api-key YOUR_KEY \
   --api-secret YOUR_SECRET \
-  dimension list
+  schema status
 ```
 
 When connecting to `localhost:8069`, keep `--site` set — the CLI sends it as the `Host` header so Frappe routes to the right site.
@@ -75,40 +92,13 @@ See `.grok/config.toml` (project-scoped, safe to commit) — not plaintext secre
 ## Commands
 
 ```bash
-# Dimensions
-konsol dimension list
-konsol dimension show dim_cost_center
-konsol dimension create dim_project --source-column Project --label "Project"
-konsol dimension publish dim_project
-konsol dimension unpublish dim_project
-
-# Measures
-konsol measure list
-konsol measure create period_headcount --expression "sum(headcount)" --label "Headcount"
-konsol measure unpublish period_headcount
-
-# Fact tables
-konsol fact list
-konsol fact show headcount
-konsol fact create my_fact --label "My Fact" --source-type Statistical \
-  --clickhouse-table epm_staging.fact_x --scenario-key statistical
-konsol fact publish my_fact
-konsol fact unpublish my_fact
-
-# Connectors & ERP sources
-konsol connector list
-konsol connector show CONN-00001
-konsol connector create --name "ERPNext Demo" --erp-type erpnext --entity-id ENT01
-konsol connector delete CONN-00001
-konsol source list
-
 # Config (GitOps YAML)
 konsol config export -o model.yaml
 konsol config diff model.yaml
 konsol config apply model.yaml [--publish] [--prune] [--dry-run]
 
 # Schema
-konsol schema apply
+konsol schema apply [--run-dbt]
 konsol schema status
 ```
 
@@ -122,7 +112,19 @@ pip install -e ".[mcp]"
 
 Set `KONSOL_URL`, `KONSOL_SITE`, `KONSOL_API_KEY`, and `KONSOL_API_SECRET` in the server env block, then run `konsol-mcp` (stdio transport).
 
-Connector Airbyte tools (v0.10.0+): `test_connector_writeback`, `provision_connector_airbyte` — require the matching konsol app endpoints on your site.
+The server has seven tools. Each one calls only the five endpoints above:
+
+| Tool | What it does |
+|------|--------------|
+| `export_config` | Export the site configuration as a bundle. |
+| `diff_config` | Diff a bundle against the site. |
+| `apply_config` | Apply a bundle (`publish`, `prune`). |
+| `apply_schema` | Apply the published configuration to the warehouse. |
+| `get_schema_status` | Show registry counts and build requests. |
+| `apply_model_from_gitops` | Diff a bundle file, then apply it when `dry_run=False` (default `True`). |
+| `preview_impact` | Read-only: diff a bundle file and show the schema status. |
+
+The tools for single dimensions, measures, datasets and connectors, and the composites built on them (`publish_model_changes`, `provision_and_test_connector`, `onboard_new_entity`), were removed in v0.11.0.
 
 Debug with the MCP Inspector:
 
@@ -149,7 +151,7 @@ npx @modelcontextprotocol/inspector konsol-mcp
 
 ```
 konsol-cli / konsol-mcp
-  → bench execute  or  HTTP /api/method/konsol.cli_api.*
+  → bench execute  or  HTTP /api/method/konsol.cli_api.<five endpoints>
   → konsol.config_service  →  Frappe DocTypes
   → publish / apply_schema  →  dbt vars, ClickHouse DDL, Pipeline Build Request
 ```

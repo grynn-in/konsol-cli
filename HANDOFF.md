@@ -1,5 +1,7 @@
 # Konsolidat / konsol — session handoff
 
+> **5 Nov 2026 (v0.11.0):** konsol keeps five endpoints for this client (konsol#379). konsol-cli now has only `config export/diff/apply` and `schema apply/status`; the MCP server keeps `export_config`, `diff_config`, `apply_config`, `apply_schema`, `get_schema_status`, `apply_model_from_gitops` and `preview_impact`. The other tools and composites below (M4–M6, connector and Airbyte tools) were removed. Dimension, measure, dataset and connector work is done in the Frappe Desk or with `frappectl`.
+
 Last updated: 2026-06-20 (hot-deploy @ 31db0fa + writeback smoke)
 
 Point the next agent at this file first. Credentials: `~/.config/konsol/secrets.env` only — never in git, HANDOFF, or chat.

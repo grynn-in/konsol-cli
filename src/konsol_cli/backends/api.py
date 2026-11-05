@@ -1,4 +1,11 @@
-"""API backend — calls konsol.cli_api over the Frappe HTTP API."""
+"""API backend — calls konsol.cli_api over the Frappe HTTP API.
+
+konsol keeps five endpoints for this client (konsol#379): apply_schema_api and
+apply_config_api (POST only: Frappe rolls a GET request back), and
+get_schema_status_api, export_config_api and diff_config_api. diff_config is
+sent as POST too: it writes nothing, and a bundle is too large for a query
+string. The path is /api/method/<dotted.path>, which Frappe v16 still serves.
+"""
 from __future__ import annotations
 
 from typing import Any
@@ -33,47 +40,6 @@ class ApiBackend:
         if settings.site:
             self._session.headers["Host"] = settings.site
 
-    def list_dimensions(self, status: str | None = None) -> list[dict[str, Any]]:
-        return self._call("konsol.cli_api.list_dimensions_api", status=status)
-
-    def get_dimension(self, name: str) -> dict[str, Any]:
-        return self._call("konsol.cli_api.get_dimension_api", name=name)
-
-    def upsert_dimension(
-        self, spec: dict[str, Any], publish: bool = False
-    ) -> dict[str, Any]:
-        return self._call(
-            "konsol.cli_api.upsert_dimension_api",
-            use_post=True,
-            spec=spec,
-            publish=int(publish),
-        )
-
-    def publish_dimension(self, name: str) -> dict[str, Any]:
-        return self._call("konsol.cli_api.publish_dimension_api", use_post=True, name=name)
-
-    def unpublish_dimension(self, name: str) -> dict[str, Any]:
-        return self._call("konsol.cli_api.unpublish_dimension_api", use_post=True, name=name)
-
-    def get_measure(self, name: str) -> dict[str, Any]:
-        return self._call("konsol.cli_api.get_measure_api", name=name)
-
-    def upsert_measure(
-        self, spec: dict[str, Any], publish: bool = False
-    ) -> dict[str, Any]:
-        return self._call(
-            "konsol.cli_api.upsert_measure_api",
-            use_post=True,
-            spec=spec,
-            publish=int(publish),
-        )
-
-    def publish_measure(self, name: str) -> dict[str, Any]:
-        return self._call("konsol.cli_api.publish_measure_api", use_post=True, name=name)
-
-    def unpublish_measure(self, name: str) -> dict[str, Any]:
-        return self._call("konsol.cli_api.unpublish_measure_api", use_post=True, name=name)
-
     def apply_schema(self, run_dbt: bool = False) -> dict[str, Any]:
         return self._call(
             "konsol.cli_api.apply_schema_api",
@@ -83,31 +49,6 @@ class ApiBackend:
 
     def get_schema_status(self) -> dict[str, Any]:
         return self._call("konsol.cli_api.get_schema_status_api")
-
-    def list_measures(self, status: str | None = None) -> list[dict[str, Any]]:
-        return self._call("konsol.cli_api.list_measures_api", status=status)
-
-    def get_fact_table(self, name: str) -> dict[str, Any]:
-        return self._call("konsol.cli_api.get_fact_table_api", name=name)
-
-    def upsert_fact_table(
-        self, spec: dict[str, Any], publish: bool = False
-    ) -> dict[str, Any]:
-        return self._call(
-            "konsol.cli_api.upsert_fact_table_api",
-            use_post=True,
-            spec=spec,
-            publish=int(publish),
-        )
-
-    def publish_fact_table(self, name: str) -> dict[str, Any]:
-        return self._call("konsol.cli_api.publish_fact_table_api", use_post=True, name=name)
-
-    def unpublish_fact_table(self, name: str) -> dict[str, Any]:
-        return self._call("konsol.cli_api.unpublish_fact_table_api", use_post=True, name=name)
-
-    def list_fact_tables(self, status: str | None = None) -> list[dict[str, Any]]:
-        return self._call("konsol.cli_api.list_fact_tables_api", status=status)
 
     def export_config(self, status: str | None = None) -> dict[str, Any]:
         return self._call("konsol.cli_api.export_config_api", status=status)
@@ -132,38 +73,6 @@ class ApiBackend:
             spec=spec,
             status=status,
         )
-
-    def list_connectors(self, enabled: bool | None = None) -> list[dict[str, Any]]:
-        kwargs: dict[str, Any] = {}
-        if enabled is not None:
-            kwargs["enabled"] = int(enabled)
-        return self._call("konsol.cli_api.list_connectors_api", **kwargs)
-
-    def get_connector(self, name: str) -> dict[str, Any]:
-        return self._call("konsol.cli_api.get_connector_api", name=name)
-
-    def upsert_connector(self, spec: dict[str, Any]) -> dict[str, Any]:
-        return self._call(
-            "konsol.cli_api.upsert_connector_api",
-            use_post=True,
-            spec=spec,
-        )
-
-    def delete_connector(self, name: str) -> dict[str, Any]:
-        return self._call("konsol.cli_api.delete_connector_api", use_post=True, name=name)
-
-    def test_connector_writeback(self, name: str) -> dict[str, Any]:
-        return self._call("konsol.cli_api.test_connector_writeback_api", name=name)
-
-    def provision_connector_airbyte(self, name: str) -> dict[str, Any]:
-        return self._call(
-            "konsol.cli_api.provision_connector_airbyte_api",
-            use_post=True,
-            name=name,
-        )
-
-    def list_erp_sources(self) -> dict[str, Any]:
-        return self._call("konsol.cli_api.list_erp_sources_api")
 
     def _call(self, method: str, *, use_post: bool = False, **kwargs: Any) -> Any:
         kwargs = {key: value for key, value in kwargs.items() if value is not None}
