@@ -75,7 +75,8 @@ def apply_schema(
     run_dbt: bool = typer.Option(
         False,
         "--run-dbt",
-        help="Enqueue a background dbt build after schema changes.",
+        help="Request a governed full-refresh build (a Build Approval) after the "
+        "schema changes. The site's Build Approval workflow decides when it runs.",
     ),
     json_output: bool = typer.Option(False, "--json", help="Print raw JSON summary."),
 ) -> None:
@@ -94,7 +95,13 @@ def apply_schema(
     console.print(
         f"budget_fields_synced: {len(summary.get('budget_fields_synced') or [])}"
     )
-    console.print(f"dbt_triggered: {summary.get('dbt_triggered')}")
+    # konsol#170: the build is requested, not run; a full refresh may wait for review.
+    console.print(f"build_requested: {bool(summary.get('build_requested'))}")
+    if summary.get("build_approval"):
+        console.print(
+            f"build_approval: {summary['build_approval']} "
+            f"({summary.get('build_approval_state') or 'state unknown'})"
+        )
 
     errors = summary.get("errors") or []
     if errors:

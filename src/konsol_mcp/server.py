@@ -106,9 +106,15 @@ def _mutated(
 def apply_schema(run_dbt: bool = False) -> str:
     """Apply schema from published config (dbt vars, ClickHouse DDL, budget fields)."""
     result = _backend().apply_schema(run_dbt=run_dbt)
+    message = "Applied schema from published config."
+    approval = result.get("build_approval") if isinstance(result, dict) else None
+    if approval:
+        # konsol#170: requested, not run; a full refresh may wait for review.
+        state = result.get("build_approval_state") or "state unknown"
+        message += f" Requested a governed build: Build Approval {approval} ({state})."
     return _mutated(
         None,
-        "Applied schema from published config.",
+        message,
         result,
         warnings=[_PUBLISH_GATE_NOTE],
     )
